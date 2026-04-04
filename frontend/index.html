@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Internal Approval System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body class="bg-zinc-100 font-sans">
+
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-60 bg-zinc-900 flex flex-col shrink-0">
+      <div class="px-6 py-5 border-b border-zinc-800">
+        <h1 class="text-white text-lg font-bold tracking-tight">
+          Approve<span class="text-blue-400">Hub</span>
+        </h1>
+        <p class="text-zinc-500 text-xs mt-0.5">Internal System</p>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1">
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
+          <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-door-open text-base w-5"></i> Room Booking
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-gear text-base w-5"></i> Settings
+        </a>
+      </nav>
+
+      <div class="px-3 py-4 border-t border-zinc-800">
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Column -->
+    <div class="flex flex-col flex-1 overflow-hidden">
+
+      <!-- Header -->
+      <header class="h-16 bg-white border-b border-zinc-200 flex items-center px-6 gap-4 shrink-0 shadow-sm">
+        <div class="flex-1 max-w-md flex items-center gap-2 bg-zinc-100 border border-zinc-200 rounded-lg px-3 py-2">
+          <i class="fa-solid fa-magnifying-glass text-zinc-400 text-sm"></i>
+          <input type="text" placeholder="Search requests, rooms..." class="flex-1 bg-transparent text-sm text-zinc-700 outline-none placeholder:text-zinc-400" />
+        </div>
+
+        <div class="flex-1"></div>
+
+        <button class="relative p-2 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors">
+          <i class="fa-solid fa-bell text-lg"></i>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+
+        <button class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">PN</div>
+          <div class="text-left hidden sm:block">
+            <p class="text-sm font-semibold text-zinc-800 leading-none">Phu Nguyen</p>
+            <p class="text-xs text-zinc-400 mt-0.5">Software Engineer</p>
+          </div>
+          <i class="fa-solid fa-chevron-down text-zinc-400 text-xs hidden sm:block"></i>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 overflow-auto p-8">
+        <div class="max-w-6xl mx-auto">
+          <h2 class="text-2xl font-bold text-zinc-900">Welcome back, Phu!</h2>
+          <p class="text-zinc-500 mt-1 text-sm">Here is an overview of your internal requests.</p>
+
+          <!-- Stat Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
+            <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
+              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Leave Requests</p>
+              <p class="text-3xl font-bold text-zinc-900 mt-2">3</p>
+              <p class="text-xs text-blue-600 mt-1 font-medium">1 pending approval</p>
+            </div>
+            <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
+              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Room Bookings</p>
+              <p class="text-3xl font-bold text-zinc-900 mt-2">7</p>
+              <p class="text-xs text-blue-600 mt-1 font-medium">2 upcoming today</p>
+            </div>
+            <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
+              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Completed</p>
+              <p class="text-3xl font-bold text-zinc-900 mt-2">12</p>
+              <p class="text-xs text-blue-600 mt-1 font-medium">This month</p>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div class="mt-8 bg-white rounded-xl border border-zinc-200 p-10 shadow-sm text-center">
+            <p class="text-zinc-400 text-sm">Your recent activity will appear here.</p>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+</body>
+</html>
