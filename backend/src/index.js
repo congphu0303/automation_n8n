@@ -4,7 +4,6 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const axios = require("axios");
 const User = require("./models/User");
@@ -14,10 +13,17 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ═══════════════════════════════════════════
-// CONFIG: Database + Email
+// MIDDLEWARE
 // ═══════════════════════════════════════════
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  credentials: true,
+}));
+app.use(express.json());
 
-// MongoDB
+// ═══════════════════════════════════════════
+// DATABASE
+// ═══════════════════════════════════════════
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
@@ -28,74 +34,27 @@ const connectDB = async () => {
   }
 };
 
-// Email Transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE === "true",
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
-
-const sendEmail = async ({ to, subject, html }) => {
-  try {
-    await transporter.sendMail({
-      from: `"Approval System" <${process.env.SMTP_USER}>`,
-      to, subject, html,
-    });
-    console.log(`✅ Email sent to ${to}`);
-  } catch (error) {
-    console.error(`❌ Email error:`, error.message);
-  }
-};
-
-const sendToManager = async ({ employeeName, leaveDate, leaveDays, managerEmail, approvalLink }) => {
-  await sendEmail({
-    to: managerEmail,
-    subject: `📋 New Leave Request from ${employeeName}`,
-    html: `<h2>New Leave Request</h2><p><strong>Employee:</strong> ${employeeName}</p><p><strong>Date:</strong> ${leaveDate}</p><p><strong>Days:</strong> ${leaveDays}</p><a href="${approvalLink}" style="background:#2563eb;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">Review & Approve</a>`,
-  });
-};
-
-const sendToHR = async ({ employeeName, leaveDate, leaveDays, hrEmail, approvalLink }) => {
-  await sendEmail({
-    to: hrEmail,
-    subject: `📋 Approved by Manager - ${employeeName}`,
-    html: `<h2>Manager Approved</h2><p><strong>Employee:</strong> ${employeeName}</p><p><strong>Date:</strong> ${leaveDate}</p><p><strong>Days:</strong> ${leaveDays} (HR approval needed)</p><a href="${approvalLink}" style="background:#059669;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">HR Final Approve</a>`,
-  });
-};
-
-const sendResultToEmployee = async ({ employeeEmail, status, employeeName }) => {
-  const color = status === "approved" ? "#059669" : "#dc2626";
-  const msg = status === "approved" ? "has been approved" : "has been rejected";
-  await sendEmail({
-    to: employeeEmail,
-    subject: `Leave Request ${status === "approved" ? "Approved" : "Rejected"} - ${employeeName}`,
-    html: `<h2>Leave Request Update</h2><p>Your leave request ${msg}.</p><p><strong>Status:</strong> <span style="color:${color};font-weight:bold;">${status.toUpperCase()}</span></p>`,
-  });
-};
-
 // ═══════════════════════════════════════════
 // N8N WEBHOOK CALLER
 // ═══════════════════════════════════════════
-
-// Gọi N8n webhook khi có sự kiện (tuỳ chọn - nếu có webhook URL)
 const triggerN8n = async (webhookUrl, payload) => {
   if (!webhookUrl || webhookUrl.includes("yourdomain.com")) {
     console.log("⏭️ N8n webhook not configured, skipping...");
-    return;
+    return { success: false, message: "N8n not configured" };
   }
   try {
-    await axios.post(webhookUrl, payload, { timeout: 10000 });
+    const response = await axios.post(webhookUrl, payload, { timeout: 15000 });
     console.log(`✅ N8n webhook triggered: ${webhookUrl}`);
+    return { success: true, data: response.data };
   } catch (error) {
     console.error(`⚠️ N8n webhook error:`, error.message);
+    return { success: false, message: error.message };
   }
 };
 
 // ═══════════════════════════════════════════
-// MIDDLEWARE: Auth
+// AUTH MIDDLEWARE
 // ═══════════════════════════════════════════
-
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -110,221 +69,345 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-const requireRole = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user.role)) {
-    return res.status(403).json({ message: "Access denied" });
-  }
-  next();
-};
-
-// Helper
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
 const generateToken = () => crypto.randomBytes(32).toString("hex");
 const buildLink = (token) => `${process.env.FRONTEND_URL}/approvals.html?token=${token}`;
 
 // ═══════════════════════════════════════════
-// ROUTES: Auth
+// ROUTES: AUTH
 // ═══════════════════════════════════════════
 
+// POST /api/auth/register
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password, department, role } = req.body;
+
+    // Validate
+    if (!name || !email || !password || !department) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Check exists
     if (await User.findOne({ email })) {
       return res.status(400).json({ message: "Email already registered" });
     }
+
+    // Create user
     const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashed, department, role: role || "employee" });
+    const user = new User({
+      name, email, password: hashed,
+      department,
+      role: role || "employee",
+    });
     await user.save();
-    res.status(201).json({ message: "Registered", user: { id: user._id, name, email, department, role: user.role } });
+
+    res.status(201).json({
+      message: "Registered successfully",
+      user: { id: user._id, name, email, department, role: user.role },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Registration failed", error: error.message });
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Registration failed" });
   }
 });
 
+// POST /api/auth/login
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
-    const token = jwt.sign({ userId: user._id, email: user.email, name: user.name, role: user.role, department: user.department }, process.env.JWT_SECRET, { expiresIn: "24h" });
-    res.json({ message: "Login successful", token, user: { id: user._id, name: user.name, email, department: user.department, role: user.role } });
+
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        department: user.department,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        department: user.department,
+        role: user.role,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Login failed", error: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Login failed" });
   }
 });
 
+// GET /api/auth/me
 app.get("/api/auth/me", verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select("-password");
     res.json(user || {});
   } catch (error) {
-    res.status(500).json({ message: "Error", error: error.message });
+    res.status(500).json({ message: "Error" });
   }
 });
 
 // ═══════════════════════════════════════════
-// ROUTES: Leave Request
+// ROUTES: LEAVE REQUEST
 // ═══════════════════════════════════════════
 
+// POST /api/leave - Tạo đơ nghỉ phép
 app.post("/api/leave", verifyToken, async (req, res) => {
   try {
     const { leave_date, leave_days, reason } = req.body;
     const user = await User.findById(req.user.userId);
-    const managerApprovalToken = generateToken();
-    const hrApprovalToken = leave_days > 3 ? generateToken() : null;
 
+    // Validate
+    if (!leave_date || !leave_days || !reason) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Tạo tokens
+    const managerApprovalToken = generateToken();
+    const hrApprovalToken = parseInt(leave_days) > 3 ? generateToken() : null;
+
+    // Tạo đơ
     const leave = new LeaveRequest({
-      employeeId: user._id, employee_name: user.name, employee_email: user.email,
-      department: user.department, leave_date, leave_days: Number(leave_days), reason,
-      managerApprovalToken, hrApprovalToken,
+      employeeId: user._id,
+      employee_name: user.name,
+      employee_email: user.email,
+      department: user.department,
+      leave_date,
+      leave_days: parseInt(leave_days),
+      reason,
+      managerApprovalToken,
+      hrApprovalToken,
       manager_status: "pending",
-      hr_status: leave_days > 3 ? "pending" : "skipped",
+      hr_status: parseInt(leave_days) > 3 ? "pending" : "skipped",
       status: "pending",
     });
     await leave.save();
 
-    // Gửi email cho Manager
-    const manager = await User.findOne({ department: user.department, role: "manager" });
-    const managerEmail = manager ? manager.email : process.env.Manager_EMAIL;
-    await sendToManager({ employeeName: user.name, leaveDate: leave_date, leaveDays: leave_days, managerEmail, approvalLink: buildLink(managerApprovalToken) });
-
-    // Trigger N8n Workflow (Slack/Calendar/Telegram)
-    await triggerN8n(process.env.N8N_LEAVE_WEBHOOK, {
+    // Gọi N8n Webhook - gửi dữ liệu để N8n xử lý email, etc
+    const n8nPayload = {
       event: "leave_request_created",
+      requestId: leave._id.toString(),
       employeeName: user.name,
       employeeEmail: user.email,
       department: user.department,
       leaveDate: leave_date,
-      leaveDays: leave_days,
+      leaveDays: parseInt(leave_days),
       reason,
-    });
+      managerApprovalToken,
+      hrApprovalToken,
+      managerApprovalLink: buildLink(managerApprovalToken),
+      hrApprovalLink: hrApprovalToken ? buildLink(hrApprovalToken) : null,
+      requiresHrApproval: parseInt(leave_days) > 3,
+    };
 
-    res.status(201).json({ message: "Leave request submitted", leave });
+    // Gọi N8n (không block response)
+    triggerN8n(process.env.N8N_LEAVE_WEBHOOK, n8nPayload);
+
+    res.status(201).json({
+      message: "Leave request submitted",
+      leave,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Failed", error: error.message });
+    console.error("Leave error:", error.message || error);
+    res.status(500).json({ message: "Failed to submit leave request", detail: error.message });
   }
 });
 
+// GET /api/leave - Lấy danh sách đơ
 app.get("/api/leave", verifyToken, async (req, res) => {
   try {
     let query = {};
-    if (req.user.role === "employee") query = { employeeId: req.user.userId };
-    else if (req.user.role === "manager") query = { department: req.user.department };
+    if (req.user.role === "employee") {
+      query = { employeeId: req.user.userId };
+    } else if (req.user.role === "manager") {
+      query = { department: req.user.department };
+    }
+    // HR thấy tất cả
     const requests = await LeaveRequest.find(query).sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
-    res.status(500).json({ message: "Error", error: error.message });
+    console.error("Get leave error:", error);
+    res.status(500).json({ message: "Error fetching requests" });
   }
 });
 
+// GET /api/leave/:id - Chi tiết đơ
 app.get("/api/leave/:id", verifyToken, async (req, res) => {
   try {
     const request = await LeaveRequest.findById(req.params.id);
     res.json(request || {});
   } catch (error) {
-    res.status(500).json({ message: "Error", error: error.message });
+    res.status(500).json({ message: "Error" });
   }
 });
 
 // ═══════════════════════════════════════════
-// ROUTES: Approval
+// ROUTES: APPROVAL
 // ═══════════════════════════════════════════
 
+// POST /api/approval/webhook-callback - n8n gọi sau khi gửi email thành công
+// Chỉ log, không cập nhật gì — Backend là nguồn truth duy nhất
+app.post("/api/approval/webhook-callback", async (req, res) => {
+  const { event, requestId } = req.body;
+  console.log(`📧 N8N email sent: event=${event}, requestId=${requestId}`);
+  res.json({ ok: true });
+});
+
+// POST /api/approval/manager - Manager duyệt
 app.post("/api/approval/manager", async (req, res) => {
   try {
     const { token, action } = req.body;
+
     if (!["approve", "reject"].includes(action)) {
       return res.status(400).json({ message: "Invalid action" });
     }
 
     const request = await LeaveRequest.findOne({ managerApprovalToken: token });
-    if (!request) return res.status(404).json({ message: "Invalid token" });
-    if (request.manager_status !== "pending") return res.status(400).json({ message: "Already processed" });
-
-    if (action === "reject") {
-      request.manager_status = "rejected";
-      request.manager_decidedAt = new Date();
-      request.status = "rejected";
-      await request.save();
-      await sendResultToEmployee({ employeeEmail: request.employee_email, status: "rejected", employeeName: request.employee_name });
-      await triggerN8n(process.env.N8N_APPROVAL_WEBHOOK, { event: "manager_rejected", ...request.toObject() });
-      return res.json({ message: "Rejected by manager", status: "rejected" });
+    if (!request) {
+      return res.status(404).json({ message: "Invalid token" });
+    }
+    if (request.manager_status !== "pending") {
+      return res.status(400).json({ message: "Already processed" });
     }
 
-    // ✅ Manager approve
-    request.manager_status = "approved";
+    request.manager_status = action === "approve" ? "approved" : "rejected";
     request.manager_decidedAt = new Date();
 
-    if (request.leave_days > 3) {
-      await sendToHR({ employeeName: request.employee_name, leaveDate: request.leave_date, leaveDays: request.leave_days, hrEmail: process.env.HR_EMAIL, approvalLink: buildLink(request.hrApprovalToken) });
-      await triggerN8n(process.env.N8N_APPROVAL_WEBHOOK, { event: "manager_approved", ...request.toObject() });
+    if (action === "reject") {
+      request.status = "rejected";
       await request.save();
-      return res.json({ message: "Sent to HR for final approval", status: "pending" });
+      return res.json({ message: "Leave request rejected", status: "rejected" });
     }
 
+    // ✅ Manager approved
+    request.manager_decidedAt = new Date();
+
+    if (request.leave_days > 3 && request.hrApprovalToken) {
+      // > 3 ngày → Cần HR duyệt thêm
+      await request.save();
+      return res.json({
+        message: "Approved by manager. Sent to HR for final approval",
+        status: "pending",
+        requiresHrApproval: true,
+        hrApprovalToken: request.hrApprovalToken,
+      });
+    }
+
+    // ≤ 3 ngày → Duyệt xong
     request.status = "approved";
     await request.save();
-    await sendResultToEmployee({ employeeEmail: request.employee_email, status: "approved", employeeName: request.employee_name });
-    await triggerN8n(process.env.N8N_APPROVAL_WEBHOOK, { event: "leave_approved", ...request.toObject() });
-    res.json({ message: "Fully approved", status: "approved" });
+    res.json({ message: "Leave request fully approved", status: "approved" });
   } catch (error) {
-    res.status(500).json({ message: "Error", error: error.message });
+    console.error("Manager approval error:", error);
+    res.status(500).json({ message: "Error" });
   }
 });
 
+// POST /api/approval/hr - HR duyệt
 app.post("/api/approval/hr", async (req, res) => {
   try {
     const { token, action } = req.body;
+
     if (!["approve", "reject"].includes(action)) {
       return res.status(400).json({ message: "Invalid action" });
     }
 
     const request = await LeaveRequest.findOne({ hrApprovalToken: token });
-    if (!request) return res.status(404).json({ message: "Invalid token" });
-    if (request.hr_status !== "pending") return res.status(400).json({ message: "Already processed" });
-    if (request.manager_status !== "approved") return res.status(400).json({ message: "Not approved by manager" });
+    if (!request) {
+      return res.status(404).json({ message: "Invalid token" });
+    }
+    if (request.hr_status !== "pending") {
+      return res.status(400).json({ message: "Already processed" });
+    }
+    if (request.manager_status !== "approved") {
+      return res.status(400).json({ message: "Not approved by manager yet" });
+    }
 
     request.hr_status = action === "approve" ? "approved" : "rejected";
     request.hr_decidedAt = new Date();
-    request.status = request.hr_status;
+    request.status = action === "approved" ? "approved" : "rejected";
     await request.save();
-    await sendResultToEmployee({ employeeEmail: request.employee_email, status: request.status, employeeName: request.employee_name });
-    await triggerN8n(process.env.N8N_APPROVAL_WEBHOOK, { event: "hr_decided", action: request.hr_status, ...request.toObject() });
+
+    // Gọi N8n - HR decision → n8n gửi email thông báo employee
+    await triggerN8n(process.env.N8N_APPROVAL_WEBHOOK, {
+      event: request.status === "approved" ? "hr_approved" : "hr_rejected",
+      requestId: request._id.toString(),
+      employeeEmail: request.employee_email,
+      employeeName: request.employee_name,
+      leaveDate: request.leave_date,
+      leaveDays: request.leave_days,
+      reason: request.reason,
+    });
+
     res.json({ message: `HR ${request.status}`, status: request.status });
   } catch (error) {
-    res.status(500).json({ message: "Error", error: error.message });
+    console.error("HR approval error:", error);
+    res.status(500).json({ message: "Error" });
   }
 });
 
+// GET /api/approval/token/:token - Kiểm tra token
 app.get("/api/approval/token/:token", async (req, res) => {
   try {
-    let request = await LeaveRequest.findOne({ managerApprovalToken: req.params.token });
+    const { token } = req.params;
+
+    let request = await LeaveRequest.findOne({ managerApprovalToken: token });
     let approvalType = "manager";
-    if (!request) { request = await LeaveRequest.findOne({ hrApprovalToken: req.params.token }); approvalType = "hr"; }
-    if (!request) return res.status(404).json({ message: "Invalid token" });
+
+    if (!request) {
+      request = await LeaveRequest.findOne({ hrApprovalToken: token });
+      approvalType = "hr";
+    }
+
+    if (!request) {
+      return res.status(404).json({ message: "Invalid or expired token" });
+    }
+
     res.json({
-      employee_name: request.employee_name, employee_email: request.employee_email,
-      department: request.department, leave_date: request.leave_date, leave_days: request.leave_days,
-      reason: request.reason, status: approvalType === "manager" ? request.manager_status : request.hr_status,
+      employee_name: request.employee_name,
+      employee_email: request.employee_email,
+      department: request.department,
+      leave_date: request.leave_date,
+      leave_days: request.leave_days,
+      reason: request.reason,
+      status: approvalType === "manager" ? request.manager_status : request.hr_status,
       approvalType,
+      finalStatus: request.status,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error", error: error.message });
+    res.status(500).json({ message: "Error" });
   }
 });
 
 // ═══════════════════════════════════════════
-// START
+// HEALTH CHECK
 // ═══════════════════════════════════════════
-
-app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:3000", credentials: true }));
-app.use(express.json());
-
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Backend running" });
 });
 
+// ═══════════════════════════════════════════
+// START SERVER
+// ═══════════════════════════════════════════
 connectDB().then(() => {
   app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 });

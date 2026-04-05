@@ -1,0 +1,871 @@
+{
+  "name": "Leave Request Approval Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leave-request",
+        "options": {}
+      },
+      "id": "10db1e02-1c4c-4bd9-bc16-7862708ba7ef",
+      "name": "Leave Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        2512,
+        2752
+      ],
+      "webhookId": "d1b393fb-d519-427d-b0d7-656e00df7759"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.body.department }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "=IT"
+            },
+            {
+              "value2": "=Marketing",
+              "output": 1
+            },
+            {
+              "value2": "=Finance",
+              "output": 2
+            },
+            {
+              "value2": "=Sales",
+              "output": 3
+            }
+          ]
+        }
+      },
+      "id": "d696c9b3-4188-4413-a5e8-ad38165a8bc2",
+      "name": "Switch Department",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        2816,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
+      },
+      "id": "ef015013-96d2-45d8-bfa0-74b06595247c",
+      "name": "Marketing Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        3312,
+        2656
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
+      },
+      "id": "27cd0641-209c-4410-aef2-652ded331587",
+      "name": "IT Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        3312,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
+      },
+      "id": "d920d5b4-ebd5-4e49-bea5-5a282cbec873",
+      "name": "Finance Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        3312,
+        2816
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
+      },
+      "id": "c8a365c9-4114-44df-91e4-8cf39205990b",
+      "name": "Sales Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        3312,
+        3008
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #2563eb; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Phê Duyệt Nghỉ Phép</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi Quản lý,</p>\n        <p>Hệ thống ghi nhận một yêu cầu nghỉ phép mới cần được xem xét. Dưới đây là thông tin chi tiết từ nhân viên:</p>\n\n        <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Nhân viên:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\"><strong>{{ $json.body.employeeName }}</strong></td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Phòng ban:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.department }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-bottom: 30px;\">Vui lòng nhấp vào nút bên dưới để tiến hành phê duyệt hoặc từ chối yêu cầu này trên hệ thống quản trị.</p>\n\n        <div style=\"text-align: center;\">\n            <a href=\"{{ $json.body.managerApprovalLink }}\" \n               style=\"background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);\">\n               Xem xét & Phản hồi\n            </a>\n        </div>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "subject": "=Yêu cầu nghỉ phép từ {{ $json.body.employeeName }}",
+        "includeHtml": "={{ true }}",
+        "message": "=",
+        "toList": [
+          "={{ $json.manager_email }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "ac005fc0-23d8-40d0-869a-8f817513ec10",
+      "name": "Send Email To Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        3712,
+        2720
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5zanyOPJB7iaeiIr",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6802ca4f-c066-47c3-b077-59d9033cfa93",
+      "name": "Respond Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3984,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "path": "manager-decision",
+        "options": {}
+      },
+      "id": "e1484d6a-e9c1-4e06-98c9-db387238cae2",
+      "name": "Manager Decision Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        3328
+      ],
+      "webhookId": "manager-decision"
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  // Giữ nguyên data gốc từ query params của link email\n  const q = item.json.query || {};\n  item.json.token  = q.token  || item.json.token  || \"\";\n  item.json.action = q.action || item.json.action || \"\";\n  return item;\n});"
+      },
+      "id": "064a92cb-becb-4f42-91e1-e5e530efcefc",
+      "name": "Parse Decision",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        2672,
+        3328
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "chk-approve",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "options": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2864,
+        3328
+      ],
+      "id": "2d7ea114-e26e-4235-8c1d-b81f016fd97a",
+      "name": "Check Action"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.internalautomation.io.vn/api/approval/manager",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3104,
+        3216
+      ],
+      "id": "965b7337-63cd-46a2-a384-4acebe9b88a5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "chk-hr",
+              "leftValue": "={{ $json.requiresHrApproval }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "options": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        3216
+      ],
+      "id": "a33f42f6-5fc1-44dd-8781-79f4e5e7eb29",
+      "name": "Check Leave Days"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "Yêu cầu nghỉ phép đã được phê duyệt",
+        "includeHtml": true,
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #10b981; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Nghỉ Phép Đã Được Phê Duyệt</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Đơn xin nghỉ phép của bạn đã chính thức được <strong>Phê duyệt thành công</strong>.</p>\n        \n        <div style=\"background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 15px; color: #15803d; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            🎉 Chúc bạn có một kỳ nghỉ vui vẻ và ý nghĩa!\n        </div>\n\n        <p style=\"font-weight: bold; color: #374151;\">Chi tiết lịch nghỉ của bạn:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-top: 20px; margin-bottom: 0;\">Nếu có bất kỳ thay đổi nào về lịch trình, vui lòng liên hệ trực tiếp với Quản lý bộ phận hoặc Phòng Nhân sự để được hỗ trợ kịp thời.</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "f9141e51-4d31-4202-b873-537d7fcd3d25",
+      "name": "Notify Employee",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        3696,
+        3344
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5zanyOPJB7iaeiIr",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "Yêu cầu nghỉ phép bị từ chối",
+        "includeHtml": true,
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #dc2626; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được xem xét, tuy nhiên rất tiếc là đơn xin nghỉ này <strong>không được phê duyệt</strong> vào thời điểm hiện tại.</p>\n        \n        <p style=\"font-weight: bold; color: #374151; margin-top: 20px;\">Chi tiết yêu cầu đã gửi:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <div style=\"background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 15px; color: #991b1b; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            ℹ️ Bạn vui lòng liên hệ trực tiếp với Quản lý bộ phận hoặc Phòng Nhân sự để nắm rõ hơn lý do cụ thể và sắp xếp lại lịch trình công việc.\n        </div>\n\n        <p style=\"margin-bottom: 0;\">Xin cảm ơn sự thông cảm và hợp tác của bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "5579f41b-e1ce-4749-bc85-498efecbe9fa",
+      "name": "Notify Employee (Rejected)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        3728,
+        3552
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5zanyOPJB7iaeiIr",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "=Yêu cầu nghỉ phép đã gửi lên HR",
+        "includeHtml": true,
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #0f766e; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được <strong>Quản lý trực tiếp phê duyệt</strong>.</p>\n        <p style=\"background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 15px; color: #047857; font-weight: 500; border-radius: 4px;\">\n            📌 Vì thời gian nghỉ của bạn vượt quá 3 ngày, đơn xin nghỉ phép hiện đang được chuyển tiếp đến <strong>Phòng Nhân sự (HR)</strong> để hoàn tất thủ tục duyệt cuối cùng.\n        </p>\n\n        <p style=\"font-weight: bold; margin-top: 20px; color: #374151;\">Chi tiết đơn nghỉ phép:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-bottom: 0;\">Kết quả duyệt chính thức từ Phòng Nhân sự sẽ được tự động gửi đến email của bạn ngay khi có phản hồi. Cảm ơn bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "ebf83d27-b6c8-4272-8c0d-8e130a7c9004",
+      "name": "Notify Employee (Waiting HR)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        3712,
+        3120
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5zanyOPJB7iaeiIr",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "=Cần duyệt nghỉ phép – {{ $json.employeeName }} ({{ $json.leaveDays }} ngày)",
+        "includeHtml": true,
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #059669; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Phê Duyệt Nghỉ Phép (HR)</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>Phòng Nhân sự</strong>,</p>\n        <p>Hệ thống ghi nhận một yêu cầu nghỉ phép đã được <strong>Quản lý bộ phận phê duyệt</strong>. Do thời gian nghỉ vượt quá 3 ngày, đơn này đã được chuyển tiếp đến phòng HR để đưa ra quyết định cuối cùng.</p>\n\n        <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Nhân viên:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\"><strong>{{ $json.body.employeeName }}</strong></td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Email:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.employeeEmail }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-bottom: 30px;\">Vui lòng nhấp vào nút bên dưới để tiến hành xem xét, cập nhật ngày phép và phản hồi đơn này trên hệ thống.</p>\n\n        <div style=\"text-align: center;\">\n            <a href=\"{{ $json.body.hrApprovalLink }}\" \n               style=\"background-color: #059669; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2);\">\n               Xem xét & Phê duyệt\n            </a>\n        </div>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "message": "=",
+        "toList": [
+          "phupc.23ite@vku.udn.vn"
+        ],
+        "additionalFields": {}
+      },
+      "id": "a8b07ed2-c051-4919-a20b-b62ed10342c7",
+      "name": "Send Email To Hr",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        4064,
+        3152
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5zanyOPJB7iaeiIr",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b17889eb-ca60-43b3-9398-552ad72448ff",
+      "name": "Respond Webhook MGR",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        4448,
+        3344
+      ]
+    },
+    {
+      "parameters": {
+        "path": "hr-decision",
+        "options": {}
+      },
+      "id": "b11336e1-3389-4c64-828f-eff13d85ee23",
+      "name": "HR Decision Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        2448,
+        3824
+      ],
+      "webhookId": "hr-decision"
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const q = item.json.query || {};\n  item.json.token  = q.token  || item.json.token  || \"\";\n  item.json.action = q.action || item.json.action || \"\";\n  return item;\n});"
+      },
+      "id": "40f88acc-8edf-4a28-8d4c-2e3692697be5",
+      "name": "Parse Decision2",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        3824
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "chk-approve-hr",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "options": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        3824
+      ],
+      "id": "5c75cb44-d71e-406c-ac08-a92c8c4939c6",
+      "name": "Check Action HR"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.internalautomation.io.vn/api/approval/hr",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3136,
+        3824
+      ],
+      "id": "42029bb9-e5c1-473c-8bcf-1f08cf175b93",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "chk-approved",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "options": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3408,
+        3824
+      ],
+      "id": "af613e99-7e87-4837-85da-b88b85c9b3e0",
+      "name": "Check HR Result"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "=Yêu cầu nghỉ phép đã được HR phê duyệt cuối cùng",
+        "includeHtml": true,
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #047857; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Nghỉ Phép Đã Được HR Phê Duyệt</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Đơn xin nghỉ phép của bạn đã được <strong>Phòng Nhân sự (HR) phê duyệt cuối cùng</strong>.</p>\n        \n        <div style=\"background-color: #f0fdf4; border-left: 4px solid #047857; padding: 12px 15px; color: #065f46; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            🎉 Quy trình phê duyệt đã hoàn tất. Chúc bạn có một kỳ nghỉ vui vẻ và ý nghĩa!\n        </div>\n\n        <p style=\"font-weight: bold; color: #374151;\">Chi tiết lịch nghỉ đã được ghi nhận:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-top: 20px; margin-bottom: 0;\"><strong>Lưu ý:</strong> Dữ liệu nghỉ phép của bạn đã được cập nhật vào hệ thống chấm công của công ty. Nếu có bất kỳ sự cố đột xuất nào cần hủy hoặc dời lịch nghỉ, vui lòng liên hệ trực tiếp với Phòng Nhân sự sớm nhất có thể.</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "2d8c2292-925d-474d-be93-47dec4da6257",
+      "name": "Notify Employee1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        3728,
+        3760
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5zanyOPJB7iaeiIr",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "=Yêu cầu nghỉ phép bị từ chối bởi HR",
+        "includeHtml": true,
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #dc2626; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép (HR)</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được Phòng Nhân sự xem xét. Tuy nhiên, rất tiếc là chúng tôi **không thể phê duyệt** đơn xin nghỉ này vào thời điểm hiện tại.</p>\n        \n        <p style=\"font-weight: bold; color: #374151; margin-top: 20px;\">Chi tiết yêu cầu đã gửi:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <div style=\"background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 15px; color: #991b1b; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            ℹ️ Vui lòng liên hệ trực tiếp với Phòng Nhân sự (HR) để được giải thích rõ hơn về lý do cụ thể hoặc để được hỗ trợ sắp xếp lại lịch nghỉ phù hợp hơn.\n        </div>\n\n        <p style=\"margin-bottom: 0;\">Xin cảm ơn sự thông cảm và hợp tác của bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "10c06df9-57e5-40bb-9bc2-311dc3a0ae40",
+      "name": "Notify Employee1 (Rejected)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        3760,
+        4016
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5zanyOPJB7iaeiIr",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "464bbd2c-cd7e-4b9d-98e5-9efd702cf05c",
+      "name": "Respond Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        4064,
+        3872
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Leave Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Switch Department",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Department": {
+      "main": [
+        [
+          {
+            "node": "IT Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marketing Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finance Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sales Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IT Manager": {
+      "main": [
+        [
+          {
+            "node": "Send Email To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marketing Manager": {
+      "main": [
+        [
+          {
+            "node": "Send Email To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finance Manager": {
+      "main": [
+        [
+          {
+            "node": "Send Email To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sales Manager": {
+      "main": [
+        [
+          {
+            "node": "Send Email To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email To Manager": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager Decision Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Decision": {
+      "main": [
+        [
+          {
+            "node": "Check Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Action": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Employee (Rejected)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Check Leave Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Leave Days": {
+      "main": [
+        [
+          {
+            "node": "Notify Employee (Waiting HR)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee (Waiting HR)": {
+      "main": [
+        [
+          {
+            "node": "Send Email To Hr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email To Hr": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook MGR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook MGR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee (Rejected)": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook MGR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HR Decision Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Decision2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Decision2": {
+      "main": [
+        [
+          {
+            "node": "Check Action HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Action HR": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Check HR Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check HR Result": {
+      "main": [
+        [
+          {
+            "node": "Notify Employee1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Employee1 (Rejected)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee1": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee1 (Rejected)": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5691feb4-c923-42f7-9235-d90523ebba1a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4d22e83fdc4fb4665bec2708d7b85075c370023bb5832fef864947ee68ba2fc4"
+  },
+  "id": "s6nLvRqbawifmlCI",
+  "tags": []
+}

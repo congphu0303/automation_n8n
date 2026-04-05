@@ -52,7 +52,6 @@ const leaveRequestSchema = new mongoose.Schema(
     // Token duyệt cho HR (chỉ khi leave_days > 3)
     hrApprovalToken: {
       type: String,
-      unique: true,
       sparse: true,
     },
 
@@ -76,7 +75,7 @@ const leaveRequestSchema = new mongoose.Schema(
     // ─── Cấp 2: HR ───
     hr_status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "skipped"],
       default: "pending",
     },
 
