@@ -27,16 +27,13 @@
         <a href="leave.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
           <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-door-open text-base w-5"></i> Room Booking
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-gear text-base w-5"></i> Settings
+        <a href="approvals.html" id="navApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
         </a>
       </nav>
 
       <div class="px-3 py-4 border-t border-zinc-800">
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+        <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
           <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
         </a>
       </div>
@@ -49,31 +46,22 @@
       <header class="h-16 bg-white border-b border-zinc-200 flex items-center px-6 gap-4 shrink-0 shadow-sm">
         <div class="flex-1 max-w-md flex items-center gap-2 bg-zinc-100 border border-zinc-200 rounded-lg px-3 py-2">
           <i class="fa-solid fa-magnifying-glass text-zinc-400 text-sm"></i>
-          <input type="text" placeholder="Search requests, rooms..." class="flex-1 bg-transparent text-sm text-zinc-700 outline-none placeholder:text-zinc-400" />
+          <input type="text" placeholder="Search..." class="flex-1 bg-transparent text-sm text-zinc-700 outline-none placeholder:text-zinc-400" />
         </div>
-
         <div class="flex-1"></div>
-
-        <button class="relative p-2 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors">
-          <i class="fa-solid fa-bell text-lg"></i>
-          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-
-        <button class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
-          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">PN</div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold" id="avatar"></div>
           <div class="text-left hidden sm:block">
-            <p class="text-sm font-semibold text-zinc-800 leading-none">Phu Nguyen</p>
-            <p class="text-xs text-zinc-400 mt-0.5">Software Engineer</p>
+            <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
+            <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
           </div>
-          <i class="fa-solid fa-chevron-down text-zinc-400 text-xs hidden sm:block"></i>
-        </button>
+        </div>
       </header>
 
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
         <div class="max-w-2xl mx-auto">
 
-          <!-- Page Title -->
           <div class="mb-6">
             <h2 class="text-2xl font-bold text-zinc-900">Leave Request</h2>
             <p class="text-zinc-500 mt-1 text-sm">Submit your time-off application for approval.</p>
@@ -82,7 +70,6 @@
           <!-- Form Card -->
           <div class="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
 
-            <!-- Form Header -->
             <div class="px-8 py-5 border-b border-zinc-100 bg-zinc-50">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
@@ -90,83 +77,53 @@
                 </div>
                 <div>
                   <h3 class="font-semibold text-zinc-800">New Leave Application</h3>
-                  <p class="text-xs text-zinc-400 mt-0.5">All fields marked with * are required</p>
+                  <p class="text-xs text-zinc-400 mt-0.5">
+                    <span class="text-yellow-600 font-medium">≤ 3 days:</span> Manager approval only ·
+                    <span class="text-red-600 font-medium">> 3 days:</span> Manager + HR approval
+                  </p>
                 </div>
               </div>
             </div>
 
-            <!-- Form Body -->
             <form id="leaveForm" class="p-8 space-y-6">
-
-              <!-- Row 1: Name + Email -->
+              <!-- User Info (read-only, auto-filled) -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="space-y-2">
-                  <label for="employee_name" class="block text-sm font-medium text-zinc-700">
-                    Full Name <span class="text-red-500">*</span>
-                  </label>
+                  <label class="block text-sm font-medium text-zinc-700">Full Name</label>
                   <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
                       <i class="fa-solid fa-user text-sm"></i>
                     </span>
-                    <input
-                      type="text"
-                      id="employee_name"
-                      name="employee_name"
-                      required
-                      placeholder="Phu Nguyen"
-                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-zinc-400"
-                    />
+                    <input type="text" id="employee_name" readonly
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-600 cursor-not-allowed" />
                   </div>
                 </div>
 
                 <div class="space-y-2">
-                  <label for="employee_email" class="block text-sm font-medium text-zinc-700">
-                    Email <span class="text-red-500">*</span>
-                  </label>
+                  <label class="block text-sm font-medium text-zinc-700">Email</label>
                   <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
                       <i class="fa-solid fa-envelope text-sm"></i>
                     </span>
-                    <input
-                      type="email"
-                      id="employee_email"
-                      name="employee_email"
-                      required
-                      placeholder="phu@company.com"
-                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-zinc-400"
-                    />
+                    <input type="email" id="employee_email" readonly
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-600 cursor-not-allowed" />
                   </div>
                 </div>
               </div>
 
-              <!-- Row 2: Department -->
+              <!-- Department (read-only) -->
               <div class="space-y-2">
-                <label for="department" class="block text-sm font-medium text-zinc-700">
-                  Department <span class="text-red-500">*</span>
-                </label>
+                <label class="block text-sm font-medium text-zinc-700">Department</label>
                 <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 z-10">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
                     <i class="fa-solid fa-building text-sm"></i>
                   </span>
-                  <select
-                    id="department"
-                    name="department"
-                    required
-                    class="w-full pl-10 pr-10 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled selected>Select department</option>
-                    <option value="IT">IT</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Sales">Sales</option>
-                  </select>
-                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none">
-                    <i class="fa-solid fa-chevron-down text-xs"></i>
-                  </span>
+                  <input type="text" id="department" readonly
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-600 cursor-not-allowed" />
                 </div>
               </div>
 
-              <!-- Row 3: Leave Date + Days -->
+              <!-- Leave Date + Days -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="space-y-2">
                   <label for="leave_date" class="block text-sm font-medium text-zinc-700">
@@ -176,13 +133,8 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
                       <i class="fa-solid fa-calendar text-sm"></i>
                     </span>
-                    <input
-                      type="date"
-                      id="leave_date"
-                      name="leave_date"
-                      required
-                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    />
+                    <input type="date" id="leave_date" name="leave_date" required
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
                   </div>
                 </div>
 
@@ -194,21 +146,13 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
                       <i class="fa-solid fa-clock text-sm"></i>
                     </span>
-                    <input
-                      type="number"
-                      id="leave_days"
-                      name="leave_days"
-                      required
-                      min="1"
-                      max="30"
-                      placeholder="e.g. 2"
-                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-zinc-400"
-                    />
+                    <input type="number" id="leave_days" name="leave_days" required min="1" max="365" placeholder="e.g. 2"
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-zinc-400" />
                   </div>
                 </div>
               </div>
 
-              <!-- Row 4: Reason -->
+              <!-- Reason -->
               <div class="space-y-2">
                 <label for="reason" class="block text-sm font-medium text-zinc-700">
                   Reason <span class="text-red-500">*</span>
@@ -217,37 +161,22 @@
                   <span class="absolute left-3 top-3 text-zinc-400">
                     <i class="fa-solid fa-pen text-sm"></i>
                   </span>
-                  <textarea
-                    id="reason"
-                    name="reason"
-                    required
-                    rows="4"
+                  <textarea id="reason" name="reason" required rows="4"
                     placeholder="Describe your reason for leave..."
-                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-zinc-400 resize-none"
-                  ></textarea>
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-zinc-400 resize-none"></textarea>
                 </div>
               </div>
 
-              <!-- Divider -->
-              <div class="border-t border-zinc-100"></div>
+              <div id="errorMsg" class="hidden text-red-400 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3"></div>
+              <div id="successMsg" class="hidden text-green-400 text-sm bg-green-50 border border-green-200 rounded-lg px-4 py-3"></div>
 
-              <!-- Actions -->
-              <div class="flex items-center justify-end gap-3">
-                <a
-                  href="index.html"
-                  class="px-6 py-2.5 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-xl transition-colors"
-                >
-                  Cancel
-                </a>
-                <button
-                  type="submit"
-                  class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
-                >
-                  <i class="fa-solid fa-paper-plane text-xs"></i>
-                  Submit Request
+              <div class="border-t border-zinc-100 pt-4 flex items-center justify-end gap-3">
+                <a href="index.html" class="px-6 py-2.5 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-xl transition-colors">Cancel</a>
+                <button type="submit" id="submitBtn"
+                  class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm">
+                  <i class="fa-solid fa-paper-plane text-xs"></i> Submit Request
                 </button>
               </div>
-
             </form>
           </div>
 
@@ -256,6 +185,81 @@
 
     </div>
   </div>
+
+  <script>
+    const API_URL = "http://localhost:3001/api";
+
+    // Check auth
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!token) { window.location.href = "login.html"; }
+
+    // Pre-fill user info
+    document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
+    document.getElementById("userName").textContent = user.name || "Guest";
+    document.getElementById("userRole").textContent = { employee: "Employee", manager: "Manager", hr: "HR" }[user.role] || "";
+    document.getElementById("employee_name").value = user.name || "";
+    document.getElementById("employee_email").value = user.email || "";
+    document.getElementById("department").value = user.department || "";
+
+    // Show Approvals nav for manager/HR
+    if (["manager", "hr"].includes(user.role)) {
+      document.getElementById("navApprovals").classList.remove("hidden");
+      document.getElementById("navApprovals").classList.add("flex");
+    }
+
+    // Submit form
+    document.getElementById("leaveForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      const errorDiv = document.getElementById("errorMsg");
+      const successDiv = document.getElementById("successMsg");
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Submitting...';
+      errorDiv.classList.add("hidden");
+      successDiv.classList.add("hidden");
+
+      try {
+        const res = await fetch(`${API_URL}/leave`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            leave_date: document.getElementById("leave_date").value,
+            leave_days: document.getElementById("leave_days").value,
+            reason: document.getElementById("reason").value,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.message || "Submit failed";
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+
+        successDiv.textContent = "✅ Leave request submitted! A notification email has been sent to your manager.";
+        successDiv.classList.remove("hidden");
+        setTimeout(() => window.location.href = "index.html", 2000);
+      } catch (err) {
+        errorDiv.textContent = "Cannot connect to server.";
+        errorDiv.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
+      }
+    });
+
+    // Logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.clear();
+      window.location.href = "login.html";
+    });
+  </script>
 
 </body>
 </html>

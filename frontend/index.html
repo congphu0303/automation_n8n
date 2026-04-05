@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Internal Approval System</title>
+  <title>Dashboard - ApproveHub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
@@ -21,22 +21,19 @@
       </div>
 
       <nav class="flex-1 px-3 py-4 space-y-1">
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
+        <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
           <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+        <a href="leave.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
           <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-door-open text-base w-5"></i> Room Booking
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-gear text-base w-5"></i> Settings
+        <a href="approvals.html" id="navApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
         </a>
       </nav>
 
       <div class="px-3 py-4 border-t border-zinc-800">
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+        <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
           <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
         </a>
       </div>
@@ -49,60 +46,159 @@
       <header class="h-16 bg-white border-b border-zinc-200 flex items-center px-6 gap-4 shrink-0 shadow-sm">
         <div class="flex-1 max-w-md flex items-center gap-2 bg-zinc-100 border border-zinc-200 rounded-lg px-3 py-2">
           <i class="fa-solid fa-magnifying-glass text-zinc-400 text-sm"></i>
-          <input type="text" placeholder="Search requests, rooms..." class="flex-1 bg-transparent text-sm text-zinc-700 outline-none placeholder:text-zinc-400" />
+          <input type="text" placeholder="Search..." class="flex-1 bg-transparent text-sm text-zinc-700 outline-none placeholder:text-zinc-400" />
         </div>
-
         <div class="flex-1"></div>
-
-        <button class="relative p-2 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors">
-          <i class="fa-solid fa-bell text-lg"></i>
-          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-
-        <button class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
-          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">PN</div>
+        <div id="userBadge" class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold" id="avatar"></div>
           <div class="text-left hidden sm:block">
-            <p class="text-sm font-semibold text-zinc-800 leading-none">Phu Nguyen</p>
-            <p class="text-xs text-zinc-400 mt-0.5">Software Engineer</p>
+            <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
+            <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
           </div>
-          <i class="fa-solid fa-chevron-down text-zinc-400 text-xs hidden sm:block"></i>
-        </button>
+        </div>
       </header>
 
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
         <div class="max-w-6xl mx-auto">
-          <h2 class="text-2xl font-bold text-zinc-900">Welcome back, Phu!</h2>
-          <p class="text-zinc-500 mt-1 text-sm">Here is an overview of your internal requests.</p>
+          <h2 class="text-2xl font-bold text-zinc-900" id="welcomeTitle">Welcome back!</h2>
+          <p class="text-zinc-500 mt-1 text-sm">Here is an overview of your requests.</p>
 
           <!-- Stat Cards -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
             <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
-              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Leave Requests</p>
-              <p class="text-3xl font-bold text-zinc-900 mt-2">3</p>
-              <p class="text-xs text-blue-600 mt-1 font-medium">1 pending approval</p>
+              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Total Requests</p>
+              <p class="text-3xl font-bold text-zinc-900 mt-2" id="statTotal">0</p>
+              <p class="text-xs text-zinc-500 mt-1">All time</p>
             </div>
             <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
-              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Room Bookings</p>
-              <p class="text-3xl font-bold text-zinc-900 mt-2">7</p>
-              <p class="text-xs text-blue-600 mt-1 font-medium">2 upcoming today</p>
+              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Pending</p>
+              <p class="text-3xl font-bold text-yellow-500 mt-2" id="statPending">0</p>
+              <p class="text-xs text-zinc-500 mt-1">Waiting approval</p>
             </div>
             <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
-              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Completed</p>
-              <p class="text-3xl font-bold text-zinc-900 mt-2">12</p>
-              <p class="text-xs text-blue-600 mt-1 font-medium">This month</p>
+              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Approved</p>
+              <p class="text-3xl font-bold text-green-500 mt-2" id="statApproved">0</p>
+              <p class="text-xs text-zinc-500 mt-1">This month</p>
             </div>
           </div>
 
-          <!-- Empty state -->
-          <div class="mt-8 bg-white rounded-xl border border-zinc-200 p-10 shadow-sm text-center">
-            <p class="text-zinc-400 text-sm">Your recent activity will appear here.</p>
+          <!-- Recent Requests Table -->
+          <div class="mt-8 bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
+              <h3 class="font-semibold text-zinc-800">Recent Requests</h3>
+              <a href="leave.html" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                <i class="fa-solid fa-plus mr-1"></i> New Request
+              </a>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead class="bg-zinc-50 border-b border-zinc-100">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Days</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Reason</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Manager</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">HR</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="requestsTable" class="divide-y divide-zinc-100">
+                  <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-zinc-400 text-sm">Loading...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </main>
 
     </div>
   </div>
+
+  <script>
+    const API_URL = "http://localhost:3001/api";
+
+    // Check auth
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!token) { window.location.href = "login.html"; }
+
+    // Show role badge
+    const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
+    document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
+    document.getElementById("userName").textContent = user.name || "Guest";
+    document.getElementById("userRole").textContent = roleLabels[user.role] || user.role || "";
+    document.getElementById("welcomeTitle").textContent = `Welcome back, ${user.name || "User"}!`;
+
+    // Show Approvals nav for manager/HR
+    if (["manager", "hr"].includes(user.role)) {
+      document.getElementById("navApprovals").classList.remove("hidden");
+      document.getElementById("navApprovals").classList.add("flex");
+    }
+
+    // Status badge
+    const statusBadge = (status) => {
+      const map = {
+        pending: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Pending" },
+        approved: { bg: "bg-green-100", text: "text-green-700", label: "Approved" },
+        rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
+        skipped: { bg: "bg-zinc-100", text: "text-zinc-500", label: "Skipped" },
+      };
+      const s = map[status] || map.pending;
+      return `<span class="px-2 py-1 text-xs font-medium rounded-full ${s.bg} ${s.text}">${s.label}</span>`;
+    };
+
+    // Manager/HR status badge
+    const approvalBadge = (status) => {
+      if (!status || status === "skipped") return '<span class="text-zinc-300 text-xs">—</span>';
+      return statusBadge(status);
+    };
+
+    // Fetch requests
+    async function loadRequests() {
+      try {
+        const res = await fetch(`${API_URL}/leave`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) { console.error(data.message); return; }
+
+        // Stats
+        document.getElementById("statTotal").textContent = data.length;
+        document.getElementById("statPending").textContent = data.filter(r => r.status === "pending").length;
+        document.getElementById("statApproved").textContent = data.filter(r => r.status === "approved").length;
+
+        // Table
+        const tbody = document.getElementById("requestsTable");
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-zinc-400 text-sm">No requests yet. <a href="leave.html" class="text-blue-600 hover:underline">Create one</a></td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(r => `
+          <tr class="hover:bg-zinc-50">
+            <td class="px-6 py-4 text-sm text-zinc-700">${new Date(r.leave_date).toLocaleDateString()}</td>
+            <td class="px-6 py-4 text-sm text-zinc-700">${r.leave_days} day${r.leave_days > 1 ? "s" : ""}</td>
+            <td class="px-6 py-4 text-sm text-zinc-500 max-w-xs truncate">${r.reason}</td>
+            <td class="px-6 py-4">${approvalBadge(r.manager_status)}</td>
+            <td class="px-6 py-4">${approvalBadge(r.hr_status)}</td>
+            <td class="px-6 py-4">${statusBadge(r.status)}</td>
+          </tr>
+        `).join("");
+      } catch (err) {
+        console.error("Error loading requests:", err);
+      }
+    }
+
+    loadRequests();
+
+    // Logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.clear();
+      window.location.href = "login.html";
+    });
+  </script>
 
 </body>
 </html>

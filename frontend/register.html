@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register - ApproveHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body class="bg-zinc-900 font-sans min-h-screen flex items-center justify-center">
+
+  <div class="w-full max-w-md px-6">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <h1 class="text-white text-2xl font-bold tracking-tight">
+        Approve<span class="text-blue-400">Hub</span>
+      </h1>
+      <p class="text-zinc-500 text-sm mt-1">Employee Registration</p>
+    </div>
+
+    <!-- Register Card -->
+    <div class="bg-zinc-800 rounded-2xl p-8 shadow-xl border border-zinc-700">
+      <h2 class="text-white text-xl font-semibold mb-6">Create Account</h2>
+
+      <form id="registerForm" class="space-y-4">
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-zinc-300">Full Name</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+              <i class="fa-solid fa-user text-sm"></i>
+            </span>
+            <input type="text" id="name" name="name" required placeholder="Phu Nguyen"
+              class="w-full pl-10 pr-4 py-2.5 text-sm bg-zinc-700 border border-zinc-600 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-zinc-300">Email</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+              <i class="fa-solid fa-envelope text-sm"></i>
+            </span>
+            <input type="email" id="email" name="email" required placeholder="your@email.com"
+              class="w-full pl-10 pr-4 py-2.5 text-sm bg-zinc-700 border border-zinc-600 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-zinc-300">Password</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+              <i class="fa-solid fa-lock text-sm"></i>
+            </span>
+            <input type="password" id="password" name="password" required placeholder="Min 6 characters"
+              class="w-full pl-10 pr-4 py-2.5 text-sm bg-zinc-700 border border-zinc-600 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-zinc-300">Department</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 z-10">
+              <i class="fa-solid fa-building text-sm"></i>
+            </span>
+            <select id="department" name="department" required
+              class="w-full pl-10 pr-10 py-2.5 text-sm bg-zinc-700 border border-zinc-600 rounded-xl text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="" disabled selected>Select department</option>
+              <option value="IT">IT</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Finance">Finance</option>
+              <option value="Sales">Sales</option>
+            </select>
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
+              <i class="fa-solid fa-chevron-down text-xs"></i>
+            </span>
+          </div>
+        </div>
+
+        <div id="errorMsg" class="hidden text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2"></div>
+        <div id="successMsg" class="hidden text-green-400 text-sm bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2"></div>
+
+        <button type="submit" id="submitBtn"
+          class="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center justify-center gap-2">
+          <i class="fa-solid fa-user-plus text-xs"></i>
+          Register
+        </button>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-zinc-500 text-sm">
+          Already have an account?
+          <a href="login.html" class="text-blue-400 hover:text-blue-300 font-medium">Sign In</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3001/api";
+
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      const errorDiv = document.getElementById("errorMsg");
+      const successDiv = document.getElementById("successMsg");
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Registering...';
+      errorDiv.classList.add("hidden");
+      successDiv.classList.add("hidden");
+
+      try {
+        const res = await fetch(`${API_URL}/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: document.getElementById("name").value,
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value,
+            department: document.getElementById("department").value,
+            role: "employee",
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.message || "Registration failed";
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+
+        successDiv.textContent = "Registration successful! Redirecting to login...";
+        successDiv.classList.remove("hidden");
+        setTimeout(() => window.location.href = "login.html", 1500);
+      } catch (err) {
+        errorDiv.textContent = "Cannot connect to server.";
+        errorDiv.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-user-plus text-xs"></i> Register';
+      }
+    });
+  </script>
+
+</body>
+</html>

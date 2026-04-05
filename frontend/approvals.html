@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Approvals - ApproveHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body class="bg-zinc-100 font-sans">
+
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-60 bg-zinc-900 flex flex-col shrink-0">
+      <div class="px-6 py-5 border-b border-zinc-800">
+        <h1 class="text-white text-lg font-bold tracking-tight">
+          Approve<span class="text-blue-400">Hub</span>
+        </h1>
+        <p class="text-zinc-500 text-xs mt-0.5">Internal System</p>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1">
+        <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
+        </a>
+        <a href="leave.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
+        </a>
+        <a href="approvals.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
+          <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
+        </a>
+      </nav>
+
+      <div class="px-3 py-4 border-t border-zinc-800">
+        <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Column -->
+    <div class="flex flex-col flex-1 overflow-hidden">
+
+      <!-- Header -->
+      <header class="h-16 bg-white border-b border-zinc-200 flex items-center px-6 gap-4 shrink-0 shadow-sm">
+        <h2 class="text-lg font-semibold text-zinc-800" id="pageTitle">Pending Approvals</h2>
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold" id="avatar"></div>
+          <div class="text-left hidden sm:block">
+            <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
+            <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 overflow-auto p-8">
+        <div class="max-w-5xl mx-auto">
+
+          <!-- Token-based view (from email link) -->
+          <div id="tokenView" class="hidden">
+            <div id="tokenCard" class="bg-white rounded-xl border border-zinc-200 shadow-sm p-6">
+              <h3 class="text-lg font-semibold text-zinc-800 mb-4">Leave Request Details</h3>
+              <div id="tokenDetails" class="space-y-3 text-sm text-zinc-600"></div>
+              <div id="tokenActions" class="mt-6 flex gap-3"></div>
+              <div id="tokenResult" class="mt-4 hidden"></div>
+            </div>
+          </div>
+
+          <!-- Normal list view -->
+          <div id="listView">
+            <!-- Tabs -->
+            <div class="flex gap-2 mb-6">
+              <button id="tabPending" class="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white">Pending</button>
+              <button id="tabApproved" class="px-4 py-2 text-sm font-medium rounded-lg bg-zinc-200 text-zinc-600 hover:bg-zinc-300">Approved</button>
+              <button id="tabRejected" class="px-4 py-2 text-sm font-medium rounded-lg bg-zinc-200 text-zinc-600 hover:bg-zinc-300">Rejected</button>
+            </div>
+
+            <!-- Pending List -->
+            <div id="pendingList" class="space-y-4"></div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden bg-white rounded-xl border border-zinc-200 p-12 text-center">
+              <i class="fa-solid fa-inbox text-4xl text-zinc-300 mb-3"></i>
+              <p class="text-zinc-500 font-medium">No requests</p>
+              <p class="text-zinc-400 text-sm mt-1">All caught up!</p>
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3001/api";
+
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!token) { window.location.href = "login.html"; }
+
+    // Show user info
+    document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
+    document.getElementById("userName").textContent = user.name || "Guest";
+    const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
+    document.getElementById("userRole").textContent = roleLabels[user.role] || "";
+    document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
+
+    // Status badge
+    const statusBadge = (status) => {
+      const map = {
+        pending: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Pending" },
+        approved: { bg: "bg-green-100", text: "text-green-700", label: "Approved" },
+        rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
+        skipped: { bg: "bg-zinc-100", text: "text-zinc-500", label: "Skipped" },
+      };
+      const s = map[status] || map.pending;
+      return `<span class="px-2 py-1 text-xs font-medium rounded-full ${s.bg} ${s.text}">${s.label}</span>`;
+    };
+
+    let currentTab = "pending";
+
+    // Check URL for token (from email link)
+    const urlParams = new URLSearchParams(window.location.search);
+    const approvalToken = urlParams.get("token");
+
+    if (approvalToken) {
+      // Token view
+      document.getElementById("listView").classList.add("hidden");
+      document.getElementById("tokenView").classList.remove("hidden");
+      loadTokenRequest(approvalToken);
+    } else {
+      // Normal view
+      loadRequests();
+    }
+
+    async function loadTokenRequest(token) {
+      try {
+        const res = await fetch(`${API_URL}/approval/token/${token}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById("tokenDetails").innerHTML = `<p class="text-red-500">${data.message}</p>`;
+          return;
+        }
+
+        document.getElementById("tokenDetails").innerHTML = `
+          <p><strong>Employee:</strong> ${data.employee_name}</p>
+          <p><strong>Email:</strong> ${data.employee_email}</p>
+          <p><strong>Department:</strong> ${data.department}</p>
+          <p><strong>Leave Date:</strong> ${new Date(data.leave_date).toLocaleDateString()}</p>
+          <p><strong>Number of Days:</strong> ${data.leave_days} day${data.leave_days > 1 ? "s" : ""}</p>
+          <p><strong>Reason:</strong> ${data.reason}</p>
+          <p><strong>Approval Level:</strong> ${data.approvalType === "manager" ? "Manager Review" : "HR Final Review"}</p>
+          <p><strong>Current Status:</strong> ${statusBadge(data.status)}</p>
+        `;
+
+        const actionsDiv = document.getElementById("tokenActions");
+        const resultDiv = document.getElementById("tokenResult");
+
+        if (data.status === "pending") {
+          const approvalType = data.approvalType === "hr" ? "hr" : "manager";
+          actionsDiv.innerHTML = `
+            <button onclick="handleApproval('${token}', 'approve', '${approvalType}')"
+              class="px-6 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors flex items-center gap-2">
+              <i class="fa-solid fa-check text-xs"></i> Approve
+            </button>
+            <button onclick="handleApproval('${token}', 'reject', '${approvalType}')"
+              class="px-6 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors flex items-center gap-2">
+              <i class="fa-solid fa-xmark text-xs"></i> Reject
+            </button>
+          `;
+        } else {
+          resultDiv.classList.remove("hidden");
+          resultDiv.innerHTML = `<p class="text-sm text-zinc-500">This request has already been <strong>${data.status}</strong>.</p>`;
+        }
+      } catch (err) {
+        document.getElementById("tokenDetails").innerHTML = `<p class="text-red-500">Error loading request</p>`;
+      }
+    }
+
+    async function handleApproval(token, action, type) {
+      const resultDiv = document.getElementById("tokenResult");
+      resultDiv.classList.remove("hidden");
+      resultDiv.innerHTML = `<p class="text-sm text-blue-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing...</p>`;
+
+      try {
+        const endpoint = type === "hr" ? `${API_URL}/approval/hr` : `${API_URL}/approval/manager`;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, action }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          resultDiv.innerHTML = `<p class="text-sm text-green-600 font-medium">✅ ${data.message}</p>`;
+          setTimeout(() => window.close(), 2000);
+        } else {
+          resultDiv.innerHTML = `<p class="text-sm text-red-500">❌ ${data.message}</p>`;
+        }
+      } catch {
+        resultDiv.innerHTML = `<p class="text-sm text-red-500">❌ Connection error</p>`;
+      }
+    }
+
+    async function loadRequests() {
+      try {
+        const res = await fetch(`${API_URL}/leave`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        renderList(data);
+      } catch (err) {
+        console.error("Error:", err);
+      }
+    }
+
+    function renderList(requests) {
+      const filtered = requests.filter(r => {
+        if (currentTab === "pending") return r.status === "pending";
+        if (currentTab === "approved") return r.status === "approved";
+        if (currentTab === "rejected") return r.status === "rejected";
+      });
+
+      const container = document.getElementById("pendingList");
+      const empty = document.getElementById("emptyState");
+
+      if (filtered.length === 0) {
+        container.innerHTML = "";
+        empty.classList.remove("hidden");
+        return;
+      }
+      empty.classList.add("hidden");
+
+      container.innerHTML = filtered.map(r => `
+        <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-6">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
+                  ${r.employee_name ? r.employee_name.slice(0,2).toUpperCase() : "??"}
+                </div>
+                <div>
+                  <p class="font-semibold text-zinc-800">${r.employee_name}</p>
+                  <p class="text-xs text-zinc-400">${r.department}</p>
+                </div>
+              </div>
+              <div class="space-y-1 text-sm text-zinc-600 mt-3">
+                <p><i class="fa-solid fa-calendar mr-2 text-zinc-400"></i><strong>Date:</strong> ${new Date(r.leave_date).toLocaleDateString()}</p>
+                <p><i class="fa-solid fa-clock mr-2 text-zinc-400"></i><strong>Days:</strong> ${r.leave_days} day${r.leave_days > 1 ? "s" : ""}</p>
+                <p><i class="fa-solid fa-pen mr-2 text-zinc-400"></i><strong>Reason:</strong> ${r.reason}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="mb-2">${statusBadge(r.status)}</div>
+              ${r.leave_days > 3 ? `<span class="text-xs text-red-500 font-medium"><i class="fa-solid fa-info-circle mr-1"></i>Needs HR</span>` : ""}
+              ${r.manager_status !== "pending" && r.status === "pending" ? `<p class="text-xs text-yellow-500 mt-1">Waiting for HR</p>` : ""}
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Tabs
+    ["Pending", "Approved", "Rejected"].forEach(tab => {
+      const btn = document.getElementById(`tab${tab}`);
+      btn.addEventListener("click", () => {
+        currentTab = tab.toLowerCase();
+        document.querySelectorAll("[id^=tab]").forEach(b => {
+          b.className = "px-4 py-2 text-sm font-medium rounded-lg bg-zinc-200 text-zinc-600 hover:bg-zinc-300";
+        });
+        btn.className = "px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white";
+        loadRequests();
+      });
+    });
+
+    // Logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.clear();
+      window.location.href = "login.html";
+    });
+  </script>
+
+</body>
+</html>
