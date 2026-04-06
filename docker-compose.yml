@@ -1,55 +1,89 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  # ─────────────────────────────────────
-  # Nginx Reverse Proxy
-  # ─────────────────────────────────────
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_proxy
+  # ─── 1. POSTGRES (Dữ liệu của n8n) ───
+  postgres:
+    image: postgres:15
+    container_name: n8n_postgres
     restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - approval_network
-
-  # ─────────────────────────────────────
-  # Backend - Node.js / Express API
-  # ─────────────────────────────────────
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: approval_backend
-    restart: always
-    ports:
-      - "3001:3001"
-    env_file:
-      - ./backend/.env
     environment:
-      - NODE_ENV=production
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8npass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     networks:
       - approval_network
 
-  # ─────────────────────────────────────
-  # Frontend - Express + Static HTML
-  # ─────────────────────────────────────
+  # ─── 2. N8N ───
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: always
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=n8npass
+      - N8N_HOST=internalautomation.io.vn
+      - N8N_PORT=5678
+      - WEBHOOK_URL=https://internalautomation.io.vn/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - postgres
+    networks:
+      - approval_network
+
+  # ─── 3. FRONTEND ───
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: approval_frontend
     restart: always
-    ports:
-      - "3000:3000"
     networks:
       - approval_network
+
+  # ─── 4. BACKEND ───
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: approval_backend
+    env_file: ./backend/.env
+    environment:
+      - NODE_ENV=production
+    restart: always
+    networks:
+      - approval_network
+
+  # ─── 5. NGINX ───
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+      - backend
+      - n8n
+    restart: always
+    networks:
+      - approval_network
+
+volumes:
+  n8n_data:
+  pgdata:
 
 networks:
   approval_network:
