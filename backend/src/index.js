@@ -8,6 +8,8 @@ const crypto = require("crypto");
 const axios = require("axios");
 const User = require("./models/User");
 const LeaveRequest = require("./models/LeaveRequest");
+const Room = require("./models/Room");
+const Booking = require("./models/Booking");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
