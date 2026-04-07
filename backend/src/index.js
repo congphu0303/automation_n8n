@@ -329,6 +329,7 @@ app.post("/api/approval/manager", async (req, res) => {
       await request.save();
 
       // ✅ Gọi n8n → gửi email cho employee đang chờ HR + gửi email cho HR
+      const hrLink = buildLink(request.hrApprovalToken);
       await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
         action: "waiting_hr",
         employeeEmail: request.employee_email,
@@ -336,13 +337,14 @@ app.post("/api/approval/manager", async (req, res) => {
         leaveDate: request.leave_date,
         leaveDays: request.leave_days,
         reason: request.reason,
+        hrApprovalLink: hrLink,
         body: {
           employeeName: request.employee_name,
           employeeEmail: request.employee_email,
           leaveDate: request.leave_date,
           leaveDays: request.leave_days,
           reason: request.reason,
-          hrApprovalLink: buildLink(request.hrApprovalToken),
+          hrApprovalLink: hrLink,
         },
       });
 

@@ -7,13 +7,13 @@
         "path": "leave-request",
         "options": {}
       },
-      "id": "10db1e02-1c4c-4bd9-bc16-7862708ba7ef",
+      "id": "9d9c8bd4-dc9d-43c2-b13e-e4e80f3a85f0",
       "name": "Leave Request Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        2512,
-        2752
+        832,
+        2032
       ],
       "webhookId": "d1b393fb-d519-427d-b0d7-656e00df7759"
     },
@@ -41,65 +41,65 @@
           ]
         }
       },
-      "id": "d696c9b3-4188-4413-a5e8-ad38165a8bc2",
+      "id": "8d5d45d2-29e4-4930-8103-75f147703134",
       "name": "Switch Department",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
       "position": [
-        2816,
-        2720
+        1136,
+        2000
       ]
     },
     {
       "parameters": {
         "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
       },
-      "id": "ef015013-96d2-45d8-bfa0-74b06595247c",
+      "id": "b1b3747e-d70d-4ab7-9dc4-3a6f3f865cdf",
       "name": "Marketing Manager",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        3312,
-        2656
+        1632,
+        1936
       ]
     },
     {
       "parameters": {
         "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
       },
-      "id": "27cd0641-209c-4410-aef2-652ded331587",
+      "id": "f73b73de-7c70-4fcb-a615-be5b50caafd3",
       "name": "IT Manager",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        3312,
-        2480
+        1632,
+        1760
       ]
     },
     {
       "parameters": {
         "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
       },
-      "id": "d920d5b4-ebd5-4e49-bea5-5a282cbec873",
+      "id": "3b32b80d-1584-42e7-8c95-a9f5fc89c77b",
       "name": "Finance Manager",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        3312,
-        2816
+        1632,
+        2096
       ]
     },
     {
       "parameters": {
         "functionCode": "return items.map(item => {\n  item.json.manager_email = \"phupc.23ite@vku.udn.vn\";\n  return item;\n});"
       },
-      "id": "c8a365c9-4114-44df-91e4-8cf39205990b",
+      "id": "e0b98479-d89f-4b16-a78f-8a14dfe3d157",
       "name": "Sales Manager",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        3312,
-        3008
+        1632,
+        2288
       ]
     },
     {
@@ -114,17 +114,17 @@
         ],
         "additionalFields": {}
       },
-      "id": "ac005fc0-23d8-40d0-869a-8f817513ec10",
+      "id": "5a34ec0b-d77f-4c5a-adee-dd5ae8e05ea6",
       "name": "Send Email To Manager",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        3712,
-        2720
+        2032,
+        2000
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "5zanyOPJB7iaeiIr",
+          "id": "gA248K2gJK6X1hxp",
           "name": "Gmail account"
         }
       }
@@ -133,42 +133,44 @@
       "parameters": {
         "options": {}
       },
-      "id": "6802ca4f-c066-47c3-b077-59d9033cfa93",
+      "id": "659c9ce4-0300-4e0b-99cc-1bda424fe1a2",
       "name": "Respond Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        3984,
-        2720
+        2304,
+        2000
       ]
     },
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "manager-decision",
-        "options": {}
+        "options": {
+          "rawBody": false
+        }
       },
-      "id": "e1484d6a-e9c1-4e06-98c9-db387238cae2",
+      "id": "09df366f-0fcc-4d7b-89eb-23df1d9fec98",
       "name": "Manager Decision Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
-        2464,
-        3328
+        736,
+        2688
       ],
       "webhookId": "manager-decision"
     },
     {
       "parameters": {
-        "functionCode": "// Backend gọi webhook này sau khi manager duyệt/từ chối\n// Payload gửi sang: { action, employeeEmail, employeeName, leaveDate, leaveDays, reason, hrApprovalLink, body }\nreturn items.map(item => {\n  item.json.token   = item.json.token   || \"\";\n  item.json.action  = item.json.action  || item.json.body?.action || \"\";\n  return item;\n});"
+        "functionCode": "return items.map(item => {\n  // Frontend gửi dữ liệu dạng: { body: { hrApprovalLink, employeeEmail, ... } }\n  // Hoặc dạng flat:   { hrApprovalLink, employeeEmail, ... }\n  // Hoặc dạng query:  { query: { hrApprovalLink, ... } }\n\n  let bodyData = item.json.body || {};\n  let queryData = item.json.query || {};\n  let rootData  = item.json;\n\n  // Loại bỏ body/query khỏi root để spread không bị trùng\n  let cleanRoot = { ...rootData };\n  delete cleanRoot.body;\n  delete cleanRoot.query;\n  delete cleanRoot.headers;\n  delete cleanRoot.params;\n\n  // Merge: root < query < body  (body có priority cao nhất)\n  let merged = {\n    ...cleanRoot,\n    ...queryData,\n    ...bodyData\n  };\n\n  return {\n    json: {\n      token:         merged.token          || \"\",\n      action:        merged.action         || \"\",\n      employeeName:  merged.employeeName  || \"Unknown\",\n      hrApprovalLink:merged.hrApprovalLink || \"\",\n      employeeEmail: merged.employeeEmail || \"\",\n      leaveDate:     merged.leaveDate     || \"\",\n      leaveDays:     merged.leaveDays     || 0,\n      reason:        merged.reason        || \"\",\n      raw_data:      merged\n    }\n  };\n});"
       },
-      "id": "064a92cb-becb-4f42-91e1-e5e530efcefc",
+      "id": "16ee9871-3a91-4c8d-b25c-2de1b966adce",
       "name": "Parse Decision",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        2672,
-        3328
+        1008,
+        2720
       ]
     },
     {
@@ -191,38 +193,38 @@
           ]
         }
       },
-      "id": "a1b2c3d4-0000-0000-0000-000000000001",
+      "id": "49743a65-8f22-4656-8cd0-d46416ba4db6",
       "name": "Route Manager Action",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
       "position": [
-        2992,
-        3328
+        1328,
+        2672
       ]
     },
     {
       "parameters": {
         "resource": "message",
-        "subject": "Yêu cầu nghỉ phép đã được phê duyệt",
+        "subject": "Yêu cầu nghỉ phép đã được phê duyệt .",
         "includeHtml": true,
-        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #10b981; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Nghỉ Phép Đã Được Phê Duyệt</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Đơn xin nghỉ phép của bạn đã chính thức được <strong>Phê duyệt thành công</strong>.</p>\n        \n        <div style=\"background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 15px; color: #15803d; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            🎉 Chúc bạn có một kỳ nghỉ vui vẻ và ý nghĩa!\n        </div>\n\n        <p style=\"font-weight: bold; color: #374151;\">Chi tiết lịch nghỉ của bạn:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-top: 20px; margin-bottom: 0;\">Nếu có bất kỳ thay đổi nào về lịch trình, vui lòng liên hệ trực tiếp với Quản lý bộ phận hoặc Phòng Nhân sự để được hỗ trợ kịp thời.</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #10b981; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Nghỉ Phép Đã Được Phê Duyệt</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Đơn xin nghỉ phép của bạn đã chính thức được <strong>Phê duyệt thành công</strong>.</p>\n\n        <div style=\"background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 15px; color: #15803d; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            Chúc bạn có một kỳ nghỉ vui vẻ và ý nghĩa!\n        </div>\n\n        <p style=\"font-weight: bold; color: #374151;\">Chi tiết lịch nghỉ của bạn:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-top: 20px; margin-bottom: 0;\">Nếu có bất kỳ thay đổi nào về lịch trình, vui lòng liên hệ trực tiếp với Quản lý bộ phận hoặc Phòng Nhân sự để được hỗ trợ kịp thời.</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
         "message": "=",
         "toList": [
           "={{ $json.employeeEmail }}"
         ],
         "additionalFields": {}
       },
-      "id": "f9141e51-4d31-4202-b873-537d7fcd3d25",
+      "id": "6c4ad9dd-7907-46d4-85ff-a95eac86b53c",
       "name": "Notify Employee",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        3696,
-        3344
+        2016,
+        2240
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "5zanyOPJB7iaeiIr",
+          "id": "gA248K2gJK6X1hxp",
           "name": "Gmail account"
         }
       }
@@ -232,24 +234,24 @@
         "resource": "message",
         "subject": "Yêu cầu nghỉ phép bị từ chối",
         "includeHtml": true,
-        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #dc2626; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được xem xét, tuy nhiên rất tiếc là đơn xin nghỉ này <strong>không được phê duyệt</strong> vào thời điểm hiện tại.</p>\n        \n        <p style=\"font-weight: bold; color: #374151; margin-top: 20px;\">Chi tiết yêu cầu đã gửi:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <div style=\"background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 15px; color: #991b1b; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            ℹ️ Bạn vui lòng liên hệ trực tiếp với Quản lý bộ phận hoặc Phòng Nhân sự để nắm rõ hơn lý do cụ thể và sắp xếp lại lịch trình công việc.\n        </div>\n\n        <p style=\"margin-bottom: 0;\">Xin cảm ơn sự thông cảm và hợp tác của bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #dc2626; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được xem xét, tuy nhiên rất tiếc là đơn xin nghỉ này <strong>không được phê duyệt</strong> vào thời điểm hiện tại.</p>\n\n        <p style=\"font-weight: bold; color: #374151; margin-top: 20px;\">Chi tiết yêu cầu đã gửi:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.reason }}</td>\n            </tr>\n        </table>\n\n        <div style=\"background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 15px; color: #991b1b; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            Bạn vui lòng liên hệ trực tiếp với Quản lý bộ phận hoặc Phòng Nhân sự để nắm rõ hơn lý do cụ thể và sắp xếp lại lịch trình công việc.\n        </div>\n\n        <p style=\"margin-bottom: 0;\">Xin cảm ơn sự thông cảm và hợp tác của bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
         "message": "=",
         "toList": [
           "={{ $json.employeeEmail }}"
         ],
         "additionalFields": {}
       },
-      "id": "5579f41b-e1ce-4749-bc85-498efecbe9fa",
+      "id": "00095c69-25da-404c-8896-eca15f2c27dc",
       "name": "Notify Employee (Rejected)",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        3728,
-        3552
+        2000,
+        2448
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "5zanyOPJB7iaeiIr",
+          "id": "gA248K2gJK6X1hxp",
           "name": "Gmail account"
         }
       }
@@ -259,24 +261,24 @@
         "resource": "message",
         "subject": "=Yêu cầu nghỉ phép đã gửi lên HR",
         "includeHtml": true,
-        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #0f766e; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được <strong>Quản lý trực tiếp phê duyệt</strong>.</p>\n        <p style=\"background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 15px; color: #047857; font-weight: 500; border-radius: 4px;\">\n            📌 Vì thời gian nghỉ của bạn vượt quá 3 ngày, đơn xin nghỉ phép hiện đang được chuyển tiếp đến <strong>Phòng Nhân sự (HR)</strong> để hoàn tất thủ tục duyệt cuối cùng.\n        </p>\n\n        <p style=\"font-weight: bold; margin-top: 20px; color: #374151;\">Chi tiết đơn nghỉ phép:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-bottom: 0;\">Kết quả duyệt chính thức từ Phòng Nhân sự sẽ được tự động gửi đến email của bạn ngay khi có phản hồi. Cảm ơn bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #0f766e; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được <strong>Quản lý trực tiếp phê duyệt</strong>.</p>\n        <p style=\"background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 15px; color: #047857; font-weight: 500; border-radius: 4px;\">\n            📌 Vì thời gian nghỉ của bạn vượt quá 3 ngày, đơn xin nghỉ phép hiện đang được chuyển tiếp đến <strong>Phòng Nhân sự (HR)</strong> để hoàn tất thủ tục duyệt cuối cùng.\n        </p>\n\n        <p style=\"font-weight: bold; margin-top: 20px; color: #374151;\">Chi tiết đơn nghỉ phép:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-bottom: 0;\">Kết quả duyệt chính thức từ Phòng Nhân sự sẽ được tự động gửi đến email của bạn ngay khi có phản hồi. Cảm ơn bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
         "message": "=",
         "toList": [
           "={{ $json.employeeEmail }}"
         ],
         "additionalFields": {}
       },
-      "id": "ebf83d27-b6c8-4272-8c0d-8e130a7c9004",
+      "id": "12089658-a23c-4228-b773-2a56dc5f4319",
       "name": "Notify Employee (Waiting HR)",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        3712,
-        3120
+        2016,
+        2736
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "5zanyOPJB7iaeiIr",
+          "id": "gA248K2gJK6X1hxp",
           "name": "Gmail account"
         }
       }
@@ -284,26 +286,26 @@
     {
       "parameters": {
         "resource": "message",
-        "subject": "=Cần duyệt nghỉ phép – {{ $json.employeeName }} ({{ $json.leaveDays }} ngày)",
+        "subject": "=Yêu cầu nghỉ phép từ {{ $json.employeeName }}",
         "includeHtml": true,
-        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #059669; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Phê Duyệt Nghỉ Phép (HR)</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>Phòng Nhân sự</strong>,</p>\n        <p>Hệ thống ghi nhận một yêu cầu nghỉ phép đã được <strong>Quản lý bộ phận phê duyệt</strong>. Do thời gian nghỉ vượt quá 3 ngày, đơn này đã được chuyển tiếp đến phòng HR để đưa ra quyết định cuối cùng.</p>\n\n        <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Nhân viên:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\"><strong>{{ $json.body.employeeName }}</strong></td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Email:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.employeeEmail }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-bottom: 30px;\">Vui lòng nhấp vào nút bên dưới để tiến hành xem xét, cập nhật ngày phép và phản hồi đơn này trên hệ thống.</p>\n\n        <div style=\"text-align: center;\">\n            <a href=\"{{ $json.body.hrApprovalLink }}\" \n               style=\"background-color: #059669; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2);\">\n               Xem xét & Phê duyệt\n            </a>\n        </div>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
+        "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #059669; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Phê Duyệt Nghỉ Phép (HR)</h2>\n    </div>\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>Phòng Nhân sự</strong>,</p>\n        <p>Hệ thống ghi nhận một yêu cầu nghỉ phép đã được <strong>Quản lý bộ phận phê duyệt</strong>. Do thời gian nghỉ vượt quá 3 ngày, đơn này đã được chuyển tiếp đến phòng HR để đưa ra quyết định cuối cùng.</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Nhân viên:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\"><strong>{{ $json.employeeName }}</strong></td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Email:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.employeeEmail }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.reason }}</td>\n            </tr>\n        </table>\n        <p style=\"font-size: 11px; color: #9ca3af; text-align: center; margin-top: 10px;\">\n    Nếu nút không hoạt động, copy link sau: {{ $json.hrApprovalLink }}\n</p>\n        <div style=\"text-align: center; margin-top: 25px;\">\n    <a href=\"{{ $json.hrApprovalLink }}\" target=\"_blank\" style=\"background-color: #059669; color: #ffffff; padding: 15px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;\">Xem xét & Phê duyệt</a>\n</div>\n    </div>\n</div>",
         "message": "=",
         "toList": [
           "phupc.23ite@vku.udn.vn"
         ],
         "additionalFields": {}
       },
-      "id": "a8b07ed2-c051-4919-a20b-b62ed10342c7",
+      "id": "c09be546-fbf9-4f3b-bce0-a772086dccb4",
       "name": "Send Email To Hr",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        4064,
-        3152
+        2368,
+        2720
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "5zanyOPJB7iaeiIr",
+          "id": "gA248K2gJK6X1hxp",
           "name": "Gmail account"
         }
       }
@@ -312,13 +314,13 @@
       "parameters": {
         "options": {}
       },
-      "id": "b17889eb-ca60-43b3-9398-552ad72448ff",
+      "id": "9642c43f-2416-4073-b553-f4f6514d23e2",
       "name": "Respond Webhook MGR",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        4448,
-        3344
+        2656,
+        2448
       ]
     },
     {
@@ -327,13 +329,13 @@
         "path": "hr-decision",
         "options": {}
       },
-      "id": "b11336e1-3389-4c64-828f-eff13d85ee23",
+      "id": "b4008527-ca1d-454a-89d6-d97bfa8f5207",
       "name": "HR Decision Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
-        2448,
-        3824
+        768,
+        3104
       ],
       "webhookId": "hr-decision"
     },
@@ -341,18 +343,24 @@
       "parameters": {
         "functionCode": "// Backend gọi webhook này sau khi HR duyệt/từ chối\n// Payload gửi sang: { action, employeeEmail, employeeName, leaveDate, leaveDays, reason, body }\nreturn items.map(item => {\n  item.json.token   = item.json.token   || \"\";\n  item.json.action  = item.json.action  || item.json.body?.action || \"\";\n  return item;\n});"
       },
-      "id": "40f88acc-8edf-4a28-8d4c-2e3692697be5",
+      "id": "e673d358-b24c-4750-837f-7ca6d1a6dee6",
       "name": "Parse Decision2",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        2688,
-        3824
+        1008,
+        3104
       ]
     },
     {
       "parameters": {
         "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
           "conditions": [
             {
               "id": "chk-approve-hr",
@@ -364,17 +372,17 @@
               }
             }
           ],
-          "options": {}
+          "combinator": "and"
         },
         "options": {}
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        2912,
-        3824
+        1232,
+        3104
       ],
-      "id": "5c75cb44-d71e-406c-ac08-a92c8c4939c6",
+      "id": "a55083b9-9e82-432c-8821-7c054f8a348b",
       "name": "Check Action HR"
     },
     {
@@ -385,21 +393,21 @@
         "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #047857; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Yêu Cầu Nghỉ Phép Đã Được HR Phê Duyệt</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Đơn xin nghỉ phép của bạn đã được <strong>Phòng Nhân sự (HR) phê duyệt cuối cùng</strong>.</p>\n        \n        <div style=\"background-color: #f0fdf4; border-left: 4px solid #047857; padding: 12px 15px; color: #065f46; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            🎉 Quy trình phê duyệt đã hoàn tất. Chúc bạn có một kỳ nghỉ vui vẻ và ý nghĩa!\n        </div>\n\n        <p style=\"font-weight: bold; color: #374151;\">Chi tiết lịch nghỉ đã được ghi nhận:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <p style=\"margin-top: 20px; margin-bottom: 0;\"><strong>Lưu ý:</strong> Dữ liệu nghỉ phép của bạn đã được cập nhật vào hệ thống chấm công của công ty. Nếu có bất kỳ sự cố đột xuất nào cần hủy hoặc dời lịch nghỉ, vui lòng liên hệ trực tiếp với Phòng Nhân sự sớm nhất có thể.</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
         "message": "=",
         "toList": [
-          "={{ $json.employeeEmail }}"
+          "={{ $json.raw_data.employeeEmail }}"
         ],
         "additionalFields": {}
       },
-      "id": "2d8c2292-925d-474d-be93-47dec4da6257",
+      "id": "878a9a2b-2c8e-4f86-953d-ab0c805b3c25",
       "name": "Notify Employee1",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        3728,
-        3760
+        2048,
+        3040
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "5zanyOPJB7iaeiIr",
+          "id": "gA248K2gJK6X1hxp",
           "name": "Gmail account"
         }
       }
@@ -412,21 +420,21 @@
         "htmlMessage": "=<div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background-color: #dc2626; color: #ffffff; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;\">Thông Báo Trạng Thái Nghỉ Phép (HR)</h2>\n    </div>\n\n    <div style=\"padding: 30px;\">\n        <p style=\"margin-top: 0;\">Kính gửi <strong>{{ $json.body.employeeName }}</strong>,</p>\n        <p>Hệ thống xin thông báo: Yêu cầu nghỉ phép của bạn đã được Phòng Nhân sự xem xét. Tuy nhiên, rất tiếc là chúng tôi **không thể phê duyệt** đơn xin nghỉ này vào thời điểm hiện tại.</p>\n        \n        <p style=\"font-weight: bold; color: #374151; margin-top: 20px;\">Chi tiết yêu cầu đã gửi:</p>\n        <table style=\"width: 100%; border-collapse: collapse; margin: 10px 0; background-color: #f9fafb; border-radius: 8px;\">\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; width: 140px; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Thời gian nghỉ:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDate }}</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280; border-bottom: 1px solid #edf2f7;\">Tổng số ngày:</td>\n                <td style=\"padding: 12px 15px; border-bottom: 1px solid #edf2f7;\">{{ $json.body.leaveDays }} ngày</td>\n            </tr>\n            <tr>\n                <td style=\"padding: 12px 15px; font-weight: bold; color: #6b7280;\">Lý do nghỉ:</td>\n                <td style=\"padding: 12px 15px;\">{{ $json.body.reason }}</td>\n            </tr>\n        </table>\n\n        <div style=\"background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 15px; color: #991b1b; font-weight: 500; border-radius: 4px; margin: 20px 0;\">\n            ℹ️ Vui lòng liên hệ trực tiếp với Phòng Nhân sự (HR) để được giải thích rõ hơn về lý do cụ thể hoặc để được hỗ trợ sắp xếp lại lịch nghỉ phù hợp hơn.\n        </div>\n\n        <p style=\"margin-bottom: 0;\">Xin cảm ơn sự thông cảm và hợp tác của bạn!</p>\n    </div>\n\n    <div style=\"background-color: #f3f4f6; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px;\">\n        <p style=\"margin: 0;\">Đây là email tự động từ Hệ thống Quản trị Nhân sự n8n.</p>\n        <p style=\"margin: 5px 0 0 0;\">Vui lòng không phản hồi lại email này.</p>\n    </div>\n</div>",
         "message": "=",
         "toList": [
-          "={{ $json.employeeEmail }}"
+          "={{ $json.body.employeeEmail }}"
         ],
         "additionalFields": {}
       },
-      "id": "10c06df9-57e5-40bb-9bc2-311dc3a0ae40",
+      "id": "24cc13b0-bd2f-477a-8259-bf16069930b5",
       "name": "Notify Employee1 (Rejected)",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        3760,
-        4016
+        2080,
+        3296
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "5zanyOPJB7iaeiIr",
+          "id": "gA248K2gJK6X1hxp",
           "name": "Gmail account"
         }
       }
@@ -435,13 +443,13 @@
       "parameters": {
         "options": {}
       },
-      "id": "464bbd2c-cd7e-4b9d-98e5-9efd702cf05c",
+      "id": "413683d2-a94a-472a-8c70-fd86136de9e4",
       "name": "Respond Webhook1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        4064,
-        3872
+        2384,
+        3152
       ]
     }
   ],
@@ -588,6 +596,11 @@
             "node": "Notify Employee (Waiting HR)",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Send Email To Hr",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -616,13 +629,7 @@
     },
     "Notify Employee (Waiting HR)": {
       "main": [
-        [
-          {
-            "node": "Send Email To Hr",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Send Email To Hr": {
@@ -704,11 +711,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "5691feb4-c923-42f7-9235-d90523ebba1a",
+  "versionId": "be113734-041b-49c0-8f0a-ad6cf0b85114",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "4d22e83fdc4fb4665bec2708d7b85075c370023bb5832fef864947ee68ba2fc4"
+    "instanceId": "a831f36a4592b7e2489dd2e8d454ce5bcf3c1e27a52a1c1c56da0af10735e74a"
   },
-  "id": "s6nLvRqbawifmlCI",
+  "id": "HjSuOqHgXJ7L3Iz5",
   "tags": []
 }
