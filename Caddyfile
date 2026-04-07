@@ -1,34 +1,14 @@
-# ═══════════════════════════════════════════
-# CADDYFILE — ApproveHub Reverse Proxy
-# Auto SSL via Let's Encrypt
-# ═══════════════════════════════════════════
-
-# ─── N8N ───
-n8n.internalautomation.io.vn {
-    reverse_proxy approval_n8n:5678
-
-    # n8n uses WebSocket for real-time
-    @websocket {
-        header Connection *Upgrade*
-        header Upgrade websocket
-    }
-    reverse_proxy @websocket approval_n8n:5678
-}
-
-# ─── FRONTEND ───
+# 1. FRONTEND - Nơi người dùng truy cập để xem giao diện
 approvehub.internalautomation.io.vn {
-    # API requests → proxy sang backend
-    handle /api/* {
-        reverse_proxy approval_backend:3001
-    }
-
-    # Static files → proxy sang frontend
-    handle {
-        reverse_proxy approval_frontend:3000
-    }
+    reverse_proxy approval_frontend:3000
 }
 
-# ─── BACKEND API ───
+# 2. BACKEND - Nơi Frontend gọi dữ liệu (API)
 api.internalautomation.io.vn {
     reverse_proxy approval_backend:3001
+}
+
+# 3. N8N - Quản lý workflow
+n8n.internalautomation.io.vn {
+    reverse_proxy approval_n8n:5678
 }

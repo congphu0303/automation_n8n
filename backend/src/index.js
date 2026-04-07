@@ -18,7 +18,11 @@ const PORT = process.env.PORT || 3001;
 // MIDDLEWARE
 // ═══════════════════════════════════════════
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: [
+    process.env.FRONTEND_URL || "http://localhost:3000",
+    "https://internalautomation.io.vn",
+    "http://localhost:3000",
+  ],
   credentials: true,
 }));
 app.use(express.json());
