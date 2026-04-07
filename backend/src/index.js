@@ -297,6 +297,23 @@ app.post("/api/approval/manager", async (req, res) => {
     if (action === "reject") {
       request.status = "rejected";
       await request.save();
+
+      // ✅ Gọi n8n → gửi email thông báo employee bị từ chối
+      await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
+        action: "reject",
+        employeeEmail: request.employee_email,
+        employeeName: request.employee_name,
+        leaveDate: request.leave_date,
+        leaveDays: request.leave_days,
+        reason: request.reason,
+        body: {
+          employeeName: request.employee_name,
+          leaveDate: request.leave_date,
+          leaveDays: request.leave_days,
+          reason: request.reason,
+        },
+      });
+
       return res.json({ message: "Leave request rejected", status: "rejected" });
     }
 
@@ -306,6 +323,25 @@ app.post("/api/approval/manager", async (req, res) => {
     if (request.leave_days > 3 && request.hrApprovalToken) {
       // > 3 ngày → Cần HR duyệt thêm
       await request.save();
+
+      // ✅ Gọi n8n → gửi email cho employee đang chờ HR + gửi email cho HR
+      await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
+        action: "waiting_hr",
+        employeeEmail: request.employee_email,
+        employeeName: request.employee_name,
+        leaveDate: request.leave_date,
+        leaveDays: request.leave_days,
+        reason: request.reason,
+        body: {
+          employeeName: request.employee_name,
+          employeeEmail: request.employee_email,
+          leaveDate: request.leave_date,
+          leaveDays: request.leave_days,
+          reason: request.reason,
+          hrApprovalLink: buildLink(request.hrApprovalToken),
+        },
+      });
+
       return res.json({
         message: "Approved by manager. Sent to HR for final approval",
         status: "pending",
@@ -317,6 +353,23 @@ app.post("/api/approval/manager", async (req, res) => {
     // ≤ 3 ngày → Duyệt xong
     request.status = "approved";
     await request.save();
+
+    // ✅ Gọi n8n → gửi email thông báo employee được duyệt
+    await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
+      action: "approve",
+      employeeEmail: request.employee_email,
+      employeeName: request.employee_name,
+      leaveDate: request.leave_date,
+      leaveDays: request.leave_days,
+      reason: request.reason,
+      body: {
+        employeeName: request.employee_name,
+        leaveDate: request.leave_date,
+        leaveDays: request.leave_days,
+        reason: request.reason,
+      },
+    });
+
     res.json({ message: "Leave request fully approved", status: "approved" });
   } catch (error) {
     console.error("Manager approval error:", error);
@@ -349,15 +402,20 @@ app.post("/api/approval/hr", async (req, res) => {
     request.status = action === "approved" ? "approved" : "rejected";
     await request.save();
 
-    // Gọi N8n - HR decision → n8n gửi email thông báo employee
-    await triggerN8n(process.env.N8N_APPROVAL_WEBHOOK, {
-      event: request.status === "approved" ? "hr_approved" : "hr_rejected",
-      requestId: request._id.toString(),
+    // ✅ Gọi n8n HR webhook → gửi email thông báo employee
+    await triggerN8n(process.env.N8N_HR_WEBHOOK, {
+      action: action === "approve" ? "approve" : "reject",
       employeeEmail: request.employee_email,
       employeeName: request.employee_name,
       leaveDate: request.leave_date,
       leaveDays: request.leave_days,
       reason: request.reason,
+      body: {
+        employeeName: request.employee_name,
+        leaveDate: request.leave_date,
+        leaveDays: request.leave_days,
+        reason: request.reason,
+      },
     });
 
     res.json({ message: `HR ${request.status}`, status: request.status });

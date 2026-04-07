@@ -144,13 +144,14 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "manager-decision",
         "options": {}
       },
       "id": "e1484d6a-e9c1-4e06-98c9-db387238cae2",
       "name": "Manager Decision Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         2464,
         3328
@@ -159,7 +160,7 @@
     },
     {
       "parameters": {
-        "functionCode": "return items.map(item => {\n  // Giữ nguyên data gốc từ query params của link email\n  const q = item.json.query || {};\n  item.json.token  = q.token  || item.json.token  || \"\";\n  item.json.action = q.action || item.json.action || \"\";\n  return item;\n});"
+        "functionCode": "// Backend gọi webhook này sau khi manager duyệt/từ chối\n// Payload gửi sang: { action, employeeEmail, employeeName, leaveDate, leaveDays, reason, hrApprovalLink, body }\nreturn items.map(item => {\n  item.json.token   = item.json.token   || \"\";\n  item.json.action  = item.json.action  || item.json.body?.action || \"\";\n  return item;\n});"
       },
       "id": "064a92cb-becb-4f42-91e1-e5e530efcefc",
       "name": "Parse Decision",
@@ -172,85 +173,32 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "conditions": [
+        "dataType": "string",
+        "value1": "={{ $json.action }}",
+        "rules": {
+          "rules": [
             {
-              "id": "chk-approve",
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "approve",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "options": {}
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        2864,
-        3328
-      ],
-      "id": "2d7ea114-e26e-4235-8c1d-b81f016fd97a",
-      "name": "Check Action"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.internalautomation.io.vn/api/approval/manager",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "token",
-              "value": "={{ $json.token }}"
+              "value2": "=approve"
             },
             {
-              "name": "action",
-              "value": "={{ $json.action }}"
+              "value2": "=reject",
+              "output": 1
+            },
+            {
+              "value2": "=waiting_hr",
+              "output": 2
             }
           ]
-        },
-        "options": {}
+        }
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "id": "a1b2c3d4-0000-0000-0000-000000000001",
+      "name": "Route Manager Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
       "position": [
-        3104,
-        3216
-      ],
-      "id": "965b7337-63cd-46a2-a384-4acebe9b88a5",
-      "name": "HTTP Request"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "conditions": [
-            {
-              "id": "chk-hr",
-              "leftValue": "={{ $json.requiresHrApproval }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "options": {}
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        3328,
-        3216
-      ],
-      "id": "a33f42f6-5fc1-44dd-8781-79f4e5e7eb29",
-      "name": "Check Leave Days"
+        2992,
+        3328
+      ]
     },
     {
       "parameters": {
@@ -375,13 +323,14 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "hr-decision",
         "options": {}
       },
       "id": "b11336e1-3389-4c64-828f-eff13d85ee23",
       "name": "HR Decision Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         2448,
         3824
@@ -390,7 +339,7 @@
     },
     {
       "parameters": {
-        "functionCode": "return items.map(item => {\n  const q = item.json.query || {};\n  item.json.token  = q.token  || item.json.token  || \"\";\n  item.json.action = q.action || item.json.action || \"\";\n  return item;\n});"
+        "functionCode": "// Backend gọi webhook này sau khi HR duyệt/từ chối\n// Payload gửi sang: { action, employeeEmail, employeeName, leaveDate, leaveDays, reason, body }\nreturn items.map(item => {\n  item.json.token   = item.json.token   || \"\";\n  item.json.action  = item.json.action  || item.json.body?.action || \"\";\n  return item;\n});"
       },
       "id": "40f88acc-8edf-4a28-8d4c-2e3692697be5",
       "name": "Parse Decision2",
@@ -427,61 +376,6 @@
       ],
       "id": "5c75cb44-d71e-406c-ac08-a92c8c4939c6",
       "name": "Check Action HR"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.internalautomation.io.vn/api/approval/hr",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "token",
-              "value": "={{ $json.token }}"
-            },
-            {
-              "name": "action",
-              "value": "={{ $json.action }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        3136,
-        3824
-      ],
-      "id": "42029bb9-e5c1-473c-8bcf-1f08cf175b93",
-      "name": "HTTP Request1"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "conditions": [
-            {
-              "id": "chk-approved",
-              "leftValue": "={{ $json.status }}",
-              "rightValue": "approved",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "options": {}
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        3408,
-        3824
-      ],
-      "id": "af613e99-7e87-4837-85da-b88b85c9b3e0",
-      "name": "Check HR Result"
     },
     {
       "parameters": {
@@ -666,18 +560,18 @@
       "main": [
         [
           {
-            "node": "Check Action",
+            "node": "Route Manager Action",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Action": {
+    "Route Manager Action": {
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Notify Employee",
             "type": "main",
             "index": 0
           }
@@ -688,54 +582,10 @@
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "HTTP Request": {
-      "main": [
-        [
-          {
-            "node": "Check Leave Days",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Leave Days": {
-      "main": [
-        [
-          {
-            "node": "Notify Employee (Waiting HR)",
-            "type": "main",
-            "index": 0
-          }
         ],
         [
           {
-            "node": "Notify Employee",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Notify Employee (Waiting HR)": {
-      "main": [
-        [
-          {
-            "node": "Send Email To Hr",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Email To Hr": {
-      "main": [
-        [
-          {
-            "node": "Respond Webhook MGR",
+            "node": "Notify Employee (Waiting HR)",
             "type": "main",
             "index": 0
           }
@@ -754,6 +604,28 @@
       ]
     },
     "Notify Employee (Rejected)": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook MGR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Employee (Waiting HR)": {
+      "main": [
+        [
+          {
+            "node": "Send Email To Hr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email To Hr": {
       "main": [
         [
           {
@@ -787,35 +659,6 @@
       ]
     },
     "Check Action HR": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request1",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "HTTP Request1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Request1": {
-      "main": [
-        [
-          {
-            "node": "Check HR Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check HR Result": {
       "main": [
         [
           {
