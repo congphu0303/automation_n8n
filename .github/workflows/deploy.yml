@@ -20,8 +20,17 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_PORT || '22' }}
           script: |
-            cd /root/automation_n8n
+            # 1. Chuyển vào đúng thư mục chứa docker-compose.yml
+            cd /root
+
+            # 2. Cập nhật code mới nhất từ GitHub
             git pull origin main
-            docker compose build backend n8n
-            docker compose up -d backend n8n caddy
+
+            # 3. Build lại KHÔNG dùng cache để ép nạp code mới vào Image
+            docker compose build --no-cache backend frontend
+
+            # 4. Khởi động lại các dịch vụ
+            docker compose up -d backend frontend n8n
+
+            # 5. Khởi động lại Caddy để làm mới SSL/Config
             docker compose restart caddy
