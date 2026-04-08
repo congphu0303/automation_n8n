@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Room - ApproveHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body class="bg-zinc-100 font-sans">
+
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-60 bg-zinc-900 flex flex-col shrink-0">
+      <div class="px-6 py-5 border-b border-zinc-800">
+        <h1 class="text-white text-lg font-bold tracking-tight">
+          Approve<span class="text-blue-400">Hub</span>
+        </h1>
+        <p class="text-zinc-500 text-xs mt-0.5">Internal System</p>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1">
+        <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
+        </a>
+        <a href="leave.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
+        </a>
+        <a href="approvals.html" id="navApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
+        </a>
+        <div class="my-2 border-t border-zinc-800"></div>
+        <a href="rooms.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-door-open text-base w-5"></i> Meeting Rooms
+        </a>
+        <a href="book-room.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
+          <i class="fa-solid fa-calendar-plus text-base w-5"></i> Book Room
+        </a>
+        <a href="booking-dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-list text-base w-5"></i> My Bookings
+        </a>
+        <a href="meeting-approvals.html" id="navMeetingApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-user-check text-base w-5"></i> Room Approvals
+        </a>
+      </nav>
+
+      <div class="px-3 py-4 border-t border-zinc-800">
+        <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Column -->
+    <div class="flex flex-col flex-1 overflow-hidden">
+
+      <!-- Header -->
+      <header class="h-16 bg-white border-b border-zinc-200 flex items-center px-6 gap-4 shrink-0 shadow-sm">
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold" id="avatar"></div>
+          <div class="text-left hidden sm:block">
+            <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
+            <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 overflow-auto p-8">
+        <div class="max-w-2xl mx-auto">
+
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-zinc-900">Book a Meeting Room</h2>
+            <p class="text-zinc-500 mt-1 text-sm">Fill in the details to request a room booking.</p>
+          </div>
+
+          <!-- Form Card -->
+          <div class="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+
+            <div class="px-8 py-5 border-b border-zinc-100 bg-zinc-50">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <i class="fa-solid fa-calendar-plus text-blue-600 text-lg"></i>
+                </div>
+                <div>
+                  <h3 class="font-semibold text-zinc-800">New Room Booking</h3>
+                  <p class="text-xs text-zinc-400 mt-0.5">Your booking will be sent to the manager for approval.</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="bookingForm" class="p-8 space-y-5">
+
+              <!-- Room Selection -->
+              <div class="space-y-2">
+                <label for="room_id" class="block text-sm font-medium text-zinc-700">
+                  Meeting Room <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                    <i class="fa-solid fa-door-open text-sm"></i>
+                  </span>
+                  <select id="room_id" name="room_id" required
+                    class="w-full pl-10 pr-10 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none bg-white">
+                    <option value="" disabled selected>Select a room</option>
+                  </select>
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none">
+                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                  </span>
+                </div>
+                <p id="roomInfo" class="hidden text-xs text-zinc-500 pl-1"></p>
+              </div>
+
+              <!-- Date + Attendees -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="space-y-2">
+                  <label for="meeting_date" class="block text-sm font-medium text-zinc-700">
+                    Meeting Date <span class="text-red-500">*</span>
+                  </label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                      <i class="fa-solid fa-calendar text-sm"></i>
+                    </span>
+                    <input type="date" id="meeting_date" name="meeting_date" required
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label for="attendees" class="block text-sm font-medium text-zinc-700">
+                    Number of Attendees <span class="text-red-500">*</span>
+                  </label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                      <i class="fa-solid fa-users text-sm"></i>
+                    </span>
+                    <input type="number" id="attendees" name="attendees" required min="1" value="1"
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Time -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="space-y-2">
+                  <label for="start_time" class="block text-sm font-medium text-zinc-700">
+                    Start Time <span class="text-red-500">*</span>
+                  </label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                      <i class="fa-solid fa-clock text-sm"></i>
+                    </span>
+                    <input type="time" id="start_time" name="start_time" required
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label for="end_time" class="block text-sm font-medium text-zinc-700">
+                    End Time <span class="text-red-500">*</span>
+                  </label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                      <i class="fa-solid fa-clock text-sm"></i>
+                    </span>
+                    <input type="time" id="end_time" name="end_time" required
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Duration notice -->
+              <div id="durationNotice" class="hidden bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
+                <i class="fa-solid fa-info-circle mr-1"></i>
+                <span id="durationText"></span>
+              </div>
+
+              <!-- Booked Slots Warning -->
+              <div id="slotsWarning" class="hidden bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-sm text-yellow-700">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                <span id="slotsText"></span>
+              </div>
+
+              <!-- Purpose -->
+              <div class="space-y-2">
+                <label for="purpose" class="block text-sm font-medium text-zinc-700">
+                  Meeting Purpose <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-3 text-zinc-400">
+                    <i class="fa-solid fa-pen text-sm"></i>
+                  </span>
+                  <textarea id="purpose" name="purpose" required rows="3"
+                    placeholder="e.g. Sprint Planning Q2 2024"
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none placeholder:text-zinc-400"></textarea>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="space-y-2">
+                <label for="notes" class="block text-sm font-medium text-zinc-700">
+                  Additional Notes
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-3 text-zinc-400">
+                    <i class="fa-solid fa-note-sticky text-sm"></i>
+                  </span>
+                  <textarea id="notes" name="notes" rows="2"
+                    placeholder="Any special requirements..."
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none placeholder:text-zinc-400"></textarea>
+                </div>
+              </div>
+
+              <!-- User info (read-only) -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium text-zinc-700">Your Name</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                      <i class="fa-solid fa-user text-sm"></i>
+                    </span>
+                    <input type="text" id="requester_name" readonly
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-600 cursor-not-allowed" />
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium text-zinc-700">Your Email</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                      <i class="fa-solid fa-envelope text-sm"></i>
+                    </span>
+                    <input type="email" id="requester_email" readonly
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-600 cursor-not-allowed" />
+                  </div>
+                </div>
+              </div>
+
+              <div id="errorMsg" class="hidden text-red-400 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3"></div>
+              <div id="successMsg" class="hidden text-green-400 text-sm bg-green-50 border border-green-200 rounded-lg px-4 py-3"></div>
+
+              <div class="border-t border-zinc-100 pt-4 flex items-center justify-end gap-3">
+                <a href="rooms.html" class="px-6 py-2.5 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-xl transition-colors">Cancel</a>
+                <button type="submit" id="submitBtn"
+                  class="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm">
+                  <i class="fa-solid fa-paper-plane text-xs"></i> Submit Booking
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script>
+    const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
+
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!token) { window.location.href = "login.html"; }
+
+    // User badge
+    document.getElementById("avatar").textContent = user.name ? user.name.slice(0, 2).toUpperCase() : "??";
+    document.getElementById("userName").textContent = user.name || "Guest";
+    document.getElementById("userRole").textContent = { employee: "Employee", manager: "Manager", hr: "HR" }[user.role] || "";
+    document.getElementById("requester_name").value = user.name || "";
+    document.getElementById("requester_email").value = user.email || "";
+
+    // Show nav for manager
+    if (user.role === "manager") {
+      document.getElementById("navMeetingApprovals").classList.remove("hidden");
+      document.getElementById("navMeetingApprovals").classList.add("flex");
+    }
+
+    // Pre-fill room_id from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const preSelectedRoom = urlParams.get("room_id");
+
+    let rooms = [];
+
+    // Load rooms
+    async function loadRooms() {
+      try {
+        const res = await fetch(`${API_URL}/rooms`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        rooms = await res.json();
+        const select = document.getElementById("room_id");
+
+        rooms.forEach(room => {
+          const opt = document.createElement("option");
+          opt.value = room._id;
+          opt.textContent = `${room.room_id} — ${room.name} (${room.capacity} people, Floor ${room.floor})`;
+          opt.dataset.roomId = room.room_id;
+          opt.dataset.roomName = room.name;
+          select.appendChild(opt);
+        });
+
+        if (preSelectedRoom) {
+          const match = Array.from(select.options).find(o => o.dataset.roomId === preSelectedRoom);
+          if (match) select.value = match.value;
+        }
+      } catch (err) {
+        console.error("Error loading rooms:", err);
+      }
+    }
+
+    loadRooms();
+
+    // Duration calc
+    function calcDuration() {
+      const start = document.getElementById("start_time").value;
+      const end = document.getElementById("end_time").value;
+      if (!start || !end) return;
+
+      const [sh, sm] = start.split(":").map(Number);
+      const [eh, em] = end.split(":").map(Number);
+      const mins = (eh * 60 + em) - (sh * 60 + sm);
+      const hours = Math.floor(mins / 60);
+      const remMins = mins % 60;
+
+      const notice = document.getElementById("durationNotice");
+      const text = document.getElementById("durationText");
+      if (mins <= 0) {
+        notice.classList.add("hidden");
+        return;
+      }
+      notice.classList.remove("hidden");
+      text.textContent = `Duration: ${hours}h ${remMins > 0 ? remMins + "m" : ""}`;
+    }
+
+    document.getElementById("start_time").addEventListener("change", checkSlots);
+    document.getElementById("end_time").addEventListener("change", () => { calcDuration(); checkSlots(); });
+    document.getElementById("meeting_date").addEventListener("change", checkSlots);
+
+    // Check booked slots
+    async function checkSlots() {
+      const roomId = document.getElementById("room_id").value;
+      const date = document.getElementById("meeting_date").value;
+      const start = document.getElementById("start_time").value;
+
+      if (!roomId || !date) return;
+
+      try {
+        const selectedRoom = rooms.find(r => r._id === roomId);
+        if (!selectedRoom) return;
+
+        const res = await fetch(`${API_URL}/rooms/${selectedRoom._id}/slots?date=${date}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const slotsDiv = document.getElementById("slotsWarning");
+        const slotsText = document.getElementById("slotsText");
+
+        if (data.booked_slots && data.booked_slots.length > 0) {
+          slotsDiv.classList.remove("hidden");
+          slotsText.textContent = `Already booked: ${data.booked_slots.join(", ")}`;
+        } else {
+          slotsDiv.classList.add("hidden");
+        }
+      } catch (err) {
+        console.error("Error checking slots:", err);
+      }
+    }
+
+    // Show room info when selected
+    document.getElementById("room_id").addEventListener("change", function () {
+      const selected = rooms.find(r => r._id === this.value);
+      const info = document.getElementById("roomInfo");
+      if (selected) {
+        info.textContent = `${selected.name} · Capacity: ${selected.capacity} · Floor ${selected.floor}`;
+        info.classList.remove("hidden");
+        checkSlots();
+      } else {
+        info.classList.add("hidden");
+      }
+    });
+
+    // Submit form
+    document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      const errorDiv = document.getElementById("errorMsg");
+      const successDiv = document.getElementById("successMsg");
+
+      // Validate time
+      const start = document.getElementById("start_time").value;
+      const end = document.getElementById("end_time").value;
+      if (start >= end) {
+        errorDiv.textContent = "End time must be after start time.";
+        errorDiv.classList.remove("hidden");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Submitting...';
+      errorDiv.classList.add("hidden");
+      successDiv.classList.add("hidden");
+
+      try {
+        const selectedRoom = rooms.find(r => r._id === document.getElementById("room_id").value);
+
+        const res = await fetch(`${API_URL}/meeting-room/book`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            room_id: document.getElementById("room_id").value,
+            room_name: selectedRoom ? selectedRoom.name : "",
+            meeting_date: document.getElementById("meeting_date").value,
+            start_time: start,
+            end_time: end,
+            purpose: document.getElementById("purpose").value,
+            attendees: parseInt(document.getElementById("attendees").value),
+            notes: document.getElementById("notes").value,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.message || "Booking failed";
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+
+        successDiv.innerHTML = `✅ Booking submitted! <strong>${data.booking_id}</strong> — waiting for manager approval.`;
+        successDiv.classList.remove("hidden");
+        setTimeout(() => window.location.href = "booking-dashboard.html", 2500);
+      } catch (err) {
+        errorDiv.textContent = "Cannot connect to server.";
+        errorDiv.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Booking';
+      }
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.clear();
+      window.location.href = "login.html";
+    });
+  </script>
+
+</body>
+</html>
