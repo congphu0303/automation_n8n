@@ -101,12 +101,15 @@
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
 
-        // Chuyển trang theo role
-        const role = data.user.role;
-        if (role === "hr") {
-          window.location.href = "approvals.html";
+        // Chuyển trang: ưu tiên returnUrl (từ email link), rồi theo role
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnUrl = urlParams.get("returnUrl");
+
+        if (returnUrl) {
+          window.location.href = returnUrl;
         } else {
-          window.location.href = "index.html";
+          const role = data.user.role;
+          window.location.href = role === "hr" ? "approvals.html" : "index.html";
         }
       } catch (err) {
         errorDiv.textContent = "Cannot connect to server. Is backend running?";

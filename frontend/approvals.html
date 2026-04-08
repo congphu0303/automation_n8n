@@ -129,12 +129,32 @@
     const approvalToken = urlParams.get("token");
 
     if (approvalToken) {
-      // Token view
+      // ── LOGIN GATE: Token trong URL → phải đăng nhập với vai trò manager/HR ──
+      if (!token) {
+        // Chưa đăng nhập → chuyển sang trang login, kèm returnUrl
+        const returnUrl = encodeURIComponent(window.location.href);
+        window.location.href = `login.html?returnUrl=${returnUrl}`;
+        return;
+      }
+
+      // Đã đăng nhập → kiểm tra vai trò
+      if (user.role !== "manager" && user.role !== "hr") {
+        document.getElementById("tokenDetails").innerHTML = `
+          <p class="text-red-500">Bạn không có quyền phê duyệt yêu cầu này.</p>
+          <p class="text-sm text-zinc-500 mt-2">Vui lòng đăng nhập bằng tài khoản Manager hoặc HR.</p>
+          <a href="login.html" class="mt-4 inline-block text-blue-600 hover:underline">Đăng nhập tài khoản khác</a>
+        `;
+        document.getElementById("tokenActions").classList.add("hidden");
+        return;
+      }
+
+      // Đã đăng nhập + đúng vai trò → hiển thị form duyệt
       document.getElementById("listView").classList.add("hidden");
       document.getElementById("tokenView").classList.remove("hidden");
       loadTokenRequest(approvalToken);
     } else {
-      // Normal view
+      // Normal view — vẫn yêu cầu đăng nhập
+      if (!token) { window.location.href = "login.html"; return; }
       loadRequests();
     }
 
