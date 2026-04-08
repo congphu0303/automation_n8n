@@ -30,6 +30,24 @@
         <a href="approvals.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
           <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
         </a>
+        <a href="settings.html" id="navSettings" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-gear text-base w-5"></i> Settings
+        </a>
+
+        <div class="my-2 border-t border-zinc-800"></div>
+
+        <a href="rooms.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-door-open text-base w-5"></i> Meeting Rooms
+        </a>
+        <a href="book-room.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-calendar-plus text-base w-5"></i> Book Room
+        </a>
+        <a href="booking-dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-list text-base w-5"></i> My Bookings
+        </a>
+        <a href="meeting-approvals.html" id="navMeetingApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
+          <i class="fa-solid fa-user-check text-base w-5"></i> Room Approvals
+        </a>
       </nav>
 
       <div class="px-3 py-4 border-t border-zinc-800">
@@ -99,8 +117,14 @@
     // ─── PRODUCTION: Sua domain này thành domain thật của bạn ───
     const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
 
-    const token = localStorage.getItem("token");
+    
+    // Ẩn Settings cho non-HR
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.role === "hr") {
+      document.getElementById("navSettings")?.classList.remove("hidden");
+    }
+
+    const token = localStorage.getItem("token");
     if (!token) { window.location.href = "login.html"; }
 
     // Show user info
@@ -129,32 +153,27 @@
     const approvalToken = urlParams.get("token");
 
     if (approvalToken) {
-      // ── LOGIN GATE: Token trong URL → phải đăng nhập với vai trò manager/HR ──
-      if (!token) {
-        // Chưa đăng nhập → chuyển sang trang login, kèm returnUrl
-        const returnUrl = encodeURIComponent(window.location.href);
-        window.location.href = `login.html?returnUrl=${returnUrl}`;
-        return;
+      // ── LOGIN GATE: Token trong URL → BẮT BUỘC đăng nhập mới (xóa token cũ) ──
+      // Nếu đã đăng nhập rồi → xóa token → buộc nhập tài khoản manager/HR
+      if (token) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       }
-
-      // Đã đăng nhập → kiểm tra vai trò
-      if (user.role !== "manager" && user.role !== "hr") {
-        document.getElementById("tokenDetails").innerHTML = `
-          <p class="text-red-500">Bạn không có quyền phê duyệt yêu cầu này.</p>
-          <p class="text-sm text-zinc-500 mt-2">Vui lòng đăng nhập bằng tài khoản Manager hoặc HR.</p>
-          <a href="login.html" class="mt-4 inline-block text-blue-600 hover:underline">Đăng nhập tài khoản khác</a>
-        `;
-        document.getElementById("tokenActions").classList.add("hidden");
-        return;
-      }
-
-      // Đã đăng nhập + đúng vai trò → hiển thị form duyệt
-      document.getElementById("listView").classList.add("hidden");
-      document.getElementById("tokenView").classList.remove("hidden");
-      loadTokenRequest(approvalToken);
+      // Chuyển sang login, kèm returnUrl để quay lại sau khi đăng nhập
+      const returnUrl = encodeURIComponent(window.location.href);
+      window.location.href = `login.html?returnUrl=${returnUrl}`;
+      return;
     } else {
-      // Normal view — vẫn yêu cầu đăng nhập
+      // Normal view — yêu cầu đăng nhập + đúng vai trò
       if (!token) { window.location.href = "login.html"; return; }
+      if (user.role !== "manager" && user.role !== "hr") {
+        document.getElementById("listView").innerHTML = `
+          <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
+            <p class="text-zinc-500">Bạn không có quyền truy cập trang này.</p>
+            <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
+          </div>`;
+        return;
+      }
       loadRequests();
     }
 
