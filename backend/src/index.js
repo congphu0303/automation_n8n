@@ -537,6 +537,7 @@ app.post("/api/approval/hr", async (req, res) => {
       reason: request.reason,
       body: {
         employeeName: request.employee_name,
+        employeeEmail: request.employee_email,
         leaveDate: request.leave_date,
         leaveDays: request.leave_days,
         reason: request.reason,

@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          path: automation_n8n
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -20,17 +22,16 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_PORT || '22' }}
           script: |
-            # 1. Chuyển vào đúng thư mục chứa docker-compose.yml
-            cd /root
+            # Copy code mới sang /root/
+            cp -r /home/runner/automation_n8n/* /root/
 
-            # 2. Cập nhật code mới nhất từ GitHub
+            # Pull latest
+            cd /root
             git pull origin main
 
-            # 3. Build lại KHÔNG dùng cache để ép nạp code mới vào Image
+            # Build --no-cache để ép nạp code mới
             docker compose build --no-cache backend frontend
 
-            # 4. Khởi động lại các dịch vụ
+            # Restart services
             docker compose up -d backend frontend n8n
-
-            # 5. Khởi động lại Caddy để làm mới SSL/Config
             docker compose restart caddy
