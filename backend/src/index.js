@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
@@ -18,7 +18,11 @@ const PORT = process.env.PORT || 3001;
 // MIDDLEWARE
 // ═══════════════════════════════════════════
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: [
+    process.env.FRONTEND_URL || "http://localhost:3000",
+    "http://localhost:3000",
+    "https://approvehub.internalautomation.io.vn",
+  ],
   credentials: true,
 }));
 app.use(express.json());
@@ -215,9 +219,11 @@ app.post("/api/leave", verifyToken, async (req, res) => {
       leaveDays: parseInt(leave_days),
       reason,
       managerApprovalToken,
-      hrApprovalToken,
       managerApprovalLink: buildLink(managerApprovalToken),
+      managerEmail: process.env.MANAGER_EMAIL,
+      hrApprovalToken,
       hrApprovalLink: hrApprovalToken ? buildLink(hrApprovalToken) : null,
+      hrEmail: process.env.HR_EMAIL,
       requiresHrApproval: parseInt(leave_days) > 3,
     };
 
@@ -395,6 +401,229 @@ app.get("/api/approval/token/:token", async (req, res) => {
       approvalType,
       finalStatus: request.status,
     });
+  } catch (error) {
+    res.status(500).json({ message: "Error" });
+  }
+});
+
+// ═══════════════════════════════════════════
+// ROUTES: ROOMS
+// ═══════════════════════════════════════════
+
+// GET /api/rooms - Lấy danh sách phòng
+app.get("/api/rooms", verifyToken, async (req, res) => {
+  try {
+    const rooms = await Room.find({ status: "active" }).sort({ room_id: 1 });
+    res.json(rooms);
+  } catch (error) {
+    console.error("Get rooms error:", error);
+    res.status(500).json({ message: "Error fetching rooms" });
+  }
+});
+
+// GET /api/rooms/:id/slots - Lấy các khung giờ đã đặt của phòng
+app.get("/api/rooms/:id/slots", verifyToken, async (req, res) => {
+  try {
+    const { date } = req.query;
+    let query = { room_id: req.params.id, status: { $ne: "cancelled" } };
+    if (date) query.meeting_date = date;
+    const bookings = await Booking.find(query).select("meeting_date start_time end_time status");
+    const booked_slots = bookings.map(b => `${b.start_time}-${b.end_time}`);
+    res.json({ booked_slots });
+  } catch (error) {
+    res.status(500).json({ message: "Error" });
+  }
+});
+
+// POST /api/meeting-room/book - Tạo booking (frontend endpoint)
+app.post("/api/meeting-room/book", verifyToken, async (req, res) => {
+  try {
+    const { room_id, room_name, meeting_date, start_time, end_time, purpose, attendees, notes } = req.body;
+    const user = await User.findById(req.user.userId);
+
+    if (!room_id || !meeting_date || !start_time || !end_time || !purpose) {
+      return res.status(400).json({ message: "All required fields must be filled" });
+    }
+
+    const room = await Room.findById(room_id);
+    if (!room) return res.status(404).json({ message: "Room not found" });
+
+    const [sh, sm] = start_time.split(":").map(Number);
+    const [eh, em] = end_time.split(":").map(Number);
+    const duration_minutes = (eh * 60 + em) - (sh * 60 + sm);
+    if (duration_minutes <= 0) return res.status(400).json({ message: "End time must be after start time" });
+
+    const conflict = await Booking.findOne({
+      room_id,
+      meeting_date,
+      status: { $ne: "cancelled" },
+      $or: [{ start_time: { $lt: end_time }, end_time: { $gt: start_time } }],
+    });
+    if (conflict) return res.status(409).json({ message: "Room already booked in this time slot" });
+
+    const bookingId = `MTG-${Date.now()}`;
+    const managerApprovalToken = require("crypto").randomBytes(32).toString("hex");
+    const approval_link = `${process.env.FRONTEND_URL}/meeting-approvals.html?token=${managerApprovalToken}`;
+
+    const booking = new Booking({
+      booking_id: bookingId,
+      requester_id: user._id,
+      requester_name: user.name,
+      requester_email: user.email,
+      department: user.department,
+      room_id: room._id,
+      room_name: room_name || room.name,
+      meeting_date,
+      start_time,
+      end_time,
+      duration_minutes,
+      purpose,
+      attendees: attendees || 1,
+      notes: notes || "",
+      managerApprovalToken,
+      manager_email: process.env.MANAGER_EMAIL || null,
+      approval_link,
+    });
+    await booking.save();
+
+    triggerN8n(process.env.N8N_MEETING_ROOM_WEBHOOK, {
+      event: "booking_created",
+      bookingId,
+      requesterName: user.name,
+      requesterEmail: user.email,
+      roomName: room.name,
+      meetingDate: meeting_date,
+      startTime: start_time,
+      endTime: end_time,
+      purpose,
+      approvalLink: approval_link,
+      approvalToken: managerApprovalToken,
+      managerEmail: process.env.MANAGER_EMAIL || null,
+    });
+
+    res.status(201).json({ message: "Booking submitted", booking_id: bookingId });
+  } catch (error) {
+    console.error("Booking error:", error);
+    res.status(500).json({ message: "Failed to submit booking", detail: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════
+// ROUTES: BOOKINGS
+// ═══════════════════════════════════════════
+
+// GET /api/bookings - Lấy danh sách booking
+app.get("/api/bookings", verifyToken, async (req, res) => {
+  try {
+    let query = {};
+    if (req.user.role === "employee") {
+      query = { requester_id: req.user.userId };
+    }
+    // manager/HR thấy tất cả
+    const bookings = await Booking.find(query).sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching bookings" });
+  }
+});
+
+// GET /api/bookings/room/:roomId - Kiểm tra phòng đã đặt chưa
+app.get("/api/bookings/room/:roomId", verifyToken, async (req, res) => {
+  try {
+    const { date } = req.query;
+    let query = { room_id: req.params.roomId, status: { $ne: "cancelled" } };
+    if (date) query.meeting_date = date;
+    const bookings = await Booking.find(query).select("meeting_date start_time end_time status");
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: "Error" });
+  }
+});
+
+// GET /api/bookings/action - Manager duyệt booking qua query params (click từ email)
+app.get("/api/bookings/action", async (req, res) => {
+  try {
+    const { token, action } = req.query;
+    if (!["approve", "reject"].includes(action)) {
+      return res.status(400).send("<h2>❌ Action không hợp lệ</h2>");
+    }
+    const booking = await Booking.findOne({ managerApprovalToken: token });
+    if (!booking) return res.status(404).send("<h2>❌ Token không hợp lệ hoặc đã hết hạn</h2>");
+    if (booking.manager_status !== "pending") {
+      return res.send(`<html><body style="font-family:Arial;text-align:center;padding:60px"><h2>ℹ️ Yêu cầu này đã được xử lý</h2><p>Trạng thái: <b>${booking.status}</b></p></body></html>`);
+    }
+    booking.manager_status = action;
+    booking.manager_decided_at = new Date();
+    booking.status = action === "approve" ? "approved" : "rejected";
+    await booking.save();
+
+    // Trigger n8n để gửi email thông báo cho requester
+    triggerN8n(process.env.N8N_MEETING_APPROVAL_WEBHOOK, {
+      event: action === "approve" ? "booking_approved" : "booking_rejected",
+      bookingId: booking.booking_id,
+      requesterEmail: booking.requester_email,
+      requesterName: booking.requester_name,
+      roomName: booking.room_name,
+      meetingDate: booking.meeting_date,
+    });
+
+    const isApprove = action === "approve";
+    res.send(`<html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;text-align:center;padding:60px;background:#f9fafb"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,0.08);border:2px solid ${isApprove ? "#16a34a" : "#dc2626"}"><h2 style="color:${isApprove ? "#16a34a" : "#dc2626"}">${isApprove ? "✅ Đã Phê Duyệt" : "❌ Đã Từ Chối"}</h2><p style="color:#555">Yêu cầu đặt phòng <b>${booking.room_name}</b> của <b>${booking.requester_name}</b> đã được <b>${isApprove ? "phê duyệt" : "từ chối"}</b>.</p><p style="color:#888;font-size:13px">Mã Booking: <code>${booking.booking_id}</code></p><p style="color:#888;font-size:13px">Email thông báo đã được gửi đến nhân viên.</p></div></body></html>`);
+  } catch (error) {
+    res.status(500).send("<h2>❌ Lỗi hệ thống</h2>");
+  }
+});
+
+// POST /api/bookings/approve - Manager duyệt booking
+app.post("/api/bookings/approve", async (req, res) => {
+  try {
+    const { token, action } = req.body;
+    if (!["approve", "reject"].includes(action)) {
+      return res.status(400).json({ message: "Invalid action" });
+    }
+
+    const booking = await Booking.findOne({ managerApprovalToken: token });
+    if (!booking) return res.status(400).json({ message: "Invalid token" });
+    if (booking.manager_status !== "pending") {
+      return res.status(400).json({ message: "Already processed" });
+    }
+
+    booking.manager_status = action;
+    booking.manager_decided_at = new Date();
+    booking.status = action === "approve" ? "approved" : "rejected";
+    await booking.save();
+
+    triggerN8n(process.env.N8N_MEETING_APPROVAL_WEBHOOK, {
+      event: action === "approve" ? "booking_approved" : "booking_rejected",
+      bookingId: booking.booking_id,
+      requesterEmail: booking.requester_email,
+      requesterName: booking.requester_name,
+      roomName: booking.room_name,
+      meetingDate: booking.meeting_date,
+    });
+
+    res.json({
+      message: `Booking ${action}d`,
+      status: booking.status,
+      requester_name: booking.requester_name,
+      requester_email: booking.requester_email,
+      room_name: booking.room_name,
+      meeting_date: booking.meeting_date,
+      start_time: booking.start_time,
+      end_time: booking.end_time,
+      booking_id: booking.booking_id,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error" });
+  }
+});
+
+// GET /api/bookings/token/:token - Kiểm tra booking token
+app.get("/api/bookings/token/:token", async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ managerApprovalToken: req.params.token });
+    if (!booking) return res.status(404).json({ message: "Invalid or expired token" });
+    res.json(booking);
   } catch (error) {
     res.status(500).json({ message: "Error" });
   }
