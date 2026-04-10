@@ -53,6 +53,14 @@
         </div>
       </header>
 
+      <!-- Loading overlay -->
+      <div id="loadingOverlay" class="fixed inset-0 bg-zinc-100 flex items-center justify-center z-50">
+        <div class="text-center">
+          <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
+          <p class="text-sm text-zinc-400">Loading...</p>
+        </div>
+      </div>
+
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
         <div class="max-w-4xl mx-auto space-y-8">
@@ -186,23 +194,47 @@
   </div>
 
   <script>
-    const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
+    const API_URL = "https://approvehub.internalautomation.io.vn/api";
     const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-    // ── Auth guard ──
-    if (!token || user.role !== "hr") {
+    const clearSession = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       window.location.href = "login.html";
-    }
+    };
 
-    // ── Header ──
-    document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-    document.getElementById("userName").textContent = user.name || "HR Admin";
-    document.getElementById("userRole").textContent = "HR Administrator";
+    // ── Auth guard: only HR can access Settings ──
+    ;(async () => {
+      if (!token) { clearSession(); return; }
+      let me;
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) { clearSession(); return; }
+        me = await res.json();
+      } catch { clearSession(); return; }
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.clear();
-      window.location.href = "login.html";
+      if (me.role !== "hr") { clearSession(); return; }
+
+      const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
+      localStorage.setItem("user", JSON.stringify(user));
+
+      document.getElementById("loadingOverlay").classList.add("hidden");
+
+      // ── Header user info ──
+      document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = user.name || "HR Admin";
+      document.getElementById("userRole").textContent = "HR Administrator";
+
+      // ── Load data ──
+      loadUsers();
+    })();
+
+    // ── Logout ──
+    document.getElementById("logoutBtn").addEventListener("click", (e) => {
+      e.preventDefault();
+      clearSession();
     });
 
     // ── Tabs ──
@@ -345,8 +377,6 @@
         msg.classList.remove("hidden");
       }
     }
-
-    loadUsers();
   </script>
 </body>
 </html>

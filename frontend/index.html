@@ -11,48 +11,8 @@
 
   <div class="flex h-screen overflow-hidden">
 
-    <!-- Sidebar -->
-    <aside class="w-60 bg-zinc-900 flex flex-col shrink-0">
-      <div class="px-6 py-5 border-b border-zinc-800">
-        <h1 class="text-white text-lg font-bold tracking-tight">
-          Approve<span class="text-blue-400">Hub</span>
-        </h1>
-        <p class="text-zinc-500 text-xs mt-0.5">Internal System</p>
-      </div>
-
-      <nav class="flex-1 px-3 py-4 space-y-1">
-        <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
-          <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
-        </a>
-        <a href="leave.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
-        </a>
-        <a href="approvals.html" id="navApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
-        </a>
-
-        <div class="my-2 border-t border-zinc-800"></div>
-
-        <a href="rooms.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-door-open text-base w-5"></i> Meeting Rooms
-        </a>
-        <a href="book-room.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-calendar-plus text-base w-5"></i> Book Room
-        </a>
-        <a href="booking-dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-list text-base w-5"></i> My Bookings
-        </a>
-        <a href="meeting-approvals.html" id="navMeetingApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-user-check text-base w-5"></i> Room Approvals
-        </a>
-      </nav>
-
-      <div class="px-3 py-4 border-t border-zinc-800">
-        <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
-        </a>
-      </div>
-    </aside>
+    <!-- Sidebar (loaded via sidebar.js) -->
+    <div id="appSidebar"></div>
 
     <!-- Main Column -->
     <div class="flex flex-col flex-1 overflow-hidden">
@@ -72,6 +32,14 @@
           </div>
         </div>
       </header>
+
+      <!-- Loading overlay -->
+      <div id="loadingOverlay" class="fixed inset-0 bg-zinc-100 flex items-center justify-center z-50">
+        <div class="text-center">
+          <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
+          <p class="text-sm text-zinc-400">Loading...</p>
+        </div>
+      </div>
 
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
@@ -132,67 +100,91 @@
     </div>
   </div>
 
+  <script src="sidebar.js"></script>
   <script>
     // ─── PRODUCTION: Sửa domain này thành domain thật của bạn ───
-    const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
+    const API_URL = "https://approvehub.internalautomation.io.vn/api";
 
-    // Check auth
+    const clearSession = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    };
+
+    // ── Auth: validate token via /auth/me ──
     const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!token) { window.location.href = "login.html"; }
 
-    // Show role badge
-    const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
-    document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
-    document.getElementById("userName").textContent = user.name || "Guest";
-    document.getElementById("userRole").textContent = roleLabels[user.role] || user.role || "";
-    document.getElementById("welcomeTitle").textContent = `Welcome back, ${user.name || "User"}!`;
+    const init = async () => {
+      document.getElementById("loadingOverlay").classList.add("hidden");
 
-    // Show Approvals nav for manager/HR
-    if (["manager", "hr"].includes(user.role)) {
-      document.getElementById("navApprovals").classList.remove("hidden");
-      document.getElementById("navApprovals").classList.add("flex");
-    }
+      if (!token) { clearSession(); return; }
 
-    // Show Meeting Room Approvals nav for manager
-    if (user.role === "manager") {
-      const el = document.getElementById("navMeetingApprovals");
-      if (el) { el.classList.remove("hidden"); el.classList.add("flex"); }
-    }
+      let me;
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) { clearSession(); return; }
+        me = await res.json();
+      } catch { clearSession(); return; }
 
-    // Status badge
-    const statusBadge = (status) => {
-      const map = {
-        pending: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Pending" },
-        approved: { bg: "bg-green-100", text: "text-green-700", label: "Approved" },
-        rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
-        skipped: { bg: "bg-zinc-100", text: "text-zinc-500", label: "Skipped" },
+      // Store fresh user data
+      const user = {
+        id: me._id,
+        name: me.name,
+        email: me.email,
+        department: me.department,
+        role: me.role,
       };
-      const s = map[status] || map.pending;
-      return `<span class="px-2 py-1 text-xs font-medium rounded-full ${s.bg} ${s.text}">${s.label}</span>`;
-    };
+      localStorage.setItem("user", JSON.stringify(user));
 
-    // Manager/HR status badge
-    const approvalBadge = (status) => {
-      if (!status || status === "skipped") return '<span class="text-zinc-300 text-xs">—</span>';
-      return statusBadge(status);
-    };
+      const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
 
-    // Fetch requests
-    async function loadRequests() {
+      // Header user badge
+      document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
+      document.getElementById("userName").textContent = user.name || "Guest";
+      document.getElementById("userRole").textContent = roleLabels[user.role] || user.role || "";
+      document.getElementById("welcomeTitle").textContent = `Welcome back, ${user.name || "User"}!`;
+
+      // Init shared sidebar — handles role-based nav visibility
+      initSidebar({ activePage: "index", user });
+
+      // ── Status badges ──
+      const statusBadge = (status) => {
+        const map = {
+          pending:   { bg: "bg-yellow-100", text: "text-yellow-700", label: "Pending" },
+          approved:  { bg: "bg-green-100",  text: "text-green-700",  label: "Approved" },
+          rejected:  { bg: "bg-red-100",    text: "text-red-700",    label: "Rejected" },
+          skipped:   { bg: "bg-zinc-100",   text: "text-zinc-500",   label: "Skipped" },
+        };
+        const s = map[status] || map.pending;
+        return `<span class="px-2 py-1 text-xs font-medium rounded-full ${s.bg} ${s.text}">${s.label}</span>`;
+      };
+
+      const approvalBadge = (status) => {
+        if (!status || status === "skipped") return '<span class="text-zinc-300 text-xs">—</span>';
+        return statusBadge(status);
+      };
+
+      // ── Load requests ──
       try {
         const res = await fetch(`${API_URL}/leave`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (!res.ok) { console.error(data.message); return; }
 
-        // Stats
+        const now = new Date();
+        const thisMonth = now.getMonth();
+        const thisYear = now.getFullYear();
+
         document.getElementById("statTotal").textContent = data.length;
         document.getElementById("statPending").textContent = data.filter(r => r.status === "pending").length;
-        document.getElementById("statApproved").textContent = data.filter(r => r.status === "approved").length;
+        document.getElementById("statApproved").textContent = data.filter(r => {
+          if (r.status !== "approved") return false;
+          const approvedAt = new Date(r.updatedAt);
+          return approvedAt.getMonth() === thisMonth && approvedAt.getFullYear() === thisYear;
+        }).length;
 
-        // Table
         const tbody = document.getElementById("requestsTable");
         if (data.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-zinc-400 text-sm">No requests yet. <a href="leave.html" class="text-blue-600 hover:underline">Create one</a></td></tr>';
@@ -211,15 +203,9 @@
       } catch (err) {
         console.error("Error loading requests:", err);
       }
-    }
+    };
 
-    loadRequests();
-
-    // Logout
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.clear();
-      window.location.href = "login.html";
-    });
+    init();
   </script>
 
 </body>

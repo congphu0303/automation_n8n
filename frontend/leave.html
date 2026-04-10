@@ -11,51 +11,8 @@
 
   <div class="flex h-screen overflow-hidden">
 
-    <!-- Sidebar -->
-    <aside class="w-60 bg-zinc-900 flex flex-col shrink-0">
-      <div class="px-6 py-5 border-b border-zinc-800">
-        <h1 class="text-white text-lg font-bold tracking-tight">
-          Approve<span class="text-blue-400">Hub</span>
-        </h1>
-        <p class="text-zinc-500 text-xs mt-0.5">Internal System</p>
-      </div>
-
-      <nav class="flex-1 px-3 py-4 space-y-1">
-        <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
-        </a>
-        <a href="leave.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
-          <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
-        </a>
-        <a href="approvals.html" id="navApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
-        </a>
-        <a href="settings.html" id="navSettings" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-gear text-base w-5"></i> Settings
-        </a>
-
-        <div class="my-2 border-t border-zinc-800"></div>
-
-        <a href="rooms.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-door-open text-base w-5"></i> Meeting Rooms
-        </a>
-        <a href="book-room.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-calendar-plus text-base w-5"></i> Book Room
-        </a>
-        <a href="booking-dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-list text-base w-5"></i> My Bookings
-        </a>
-        <a href="meeting-approvals.html" id="navMeetingApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-user-check text-base w-5"></i> Room Approvals
-        </a>
-      </nav>
-
-      <div class="px-3 py-4 border-t border-zinc-800">
-        <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
-        </a>
-      </div>
-    </aside>
+    <!-- Sidebar (loaded via sidebar.js) -->
+    <div id="appSidebar"></div>
 
     <!-- Main Column -->
     <div class="flex flex-col flex-1 overflow-hidden">
@@ -76,7 +33,15 @@
         </div>
       </header>
 
-      <!-- Content -->
+      <!-- Loading overlay (shown while validating auth) -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-zinc-100 flex items-center justify-center z-50">
+    <div class="text-center">
+      <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
+      <p class="text-sm text-zinc-400">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
         <div class="max-w-2xl mx-auto">
 
@@ -204,43 +169,78 @@
     </div>
   </div>
 
+  <script src="sidebar.js"></script>
   <script>
+    const API_URL = "https://approvehub.internalautomation.io.vn/api";
 
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const role = user.role || "";
+    // ── Helper: clear session & redirect to login ──
+    const clearSession = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    };
 
-    // Ẩn/hiện sidebar items theo role
-    if (role === "manager" || role === "hr") {
-      document.getElementById("navApprovals")?.classList.remove("hidden");
-      document.getElementById("navSettings")?.classList.remove("hidden");
-    }
-    if (role === "manager") {
-      document.getElementById("navMeetingApprovals")?.classList.remove("hidden");
-    }
-
-    // ─── PRODUCTION: Sửa domain này thành domain thật của bạn ───
-    const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
-
-    // Check auth
+    // ── Auth: validate token via /auth/me FIRST, before rendering anything ──
     const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!token) { window.location.href = "login.html"; }
 
-    // Pre-fill user info
-    document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
-    document.getElementById("userName").textContent = user.name || "Guest";
-    document.getElementById("userRole").textContent = { employee: "Employee", manager: "Manager", hr: "HR" }[user.role] || "";
-    document.getElementById("employee_name").value = user.name || "";
-    document.getElementById("employee_email").value = user.email || "";
-    document.getElementById("department").value = user.department || "";
+    const init = async () => {
+      document.getElementById("loadingOverlay").classList.add("hidden");
 
-    // Show Approvals nav for manager/HR
-    if (["manager", "hr"].includes(user.role)) {
-      document.getElementById("navApprovals").classList.remove("hidden");
-      document.getElementById("navApprovals").classList.add("flex");
-    }
+      if (!token) {
+        clearSession();
+        return;
+      }
 
-    // Submit form
+      let me;
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          clearSession();
+          return;
+        }
+        me = await res.json();
+      } catch {
+        clearSession();
+        return;
+      }
+
+      // ── Store fresh user data in localStorage ──
+      const user = {
+        id: me._id,
+        name: me.name,
+        email: me.email,
+        department: me.department,
+        role: me.role,
+      };
+      localStorage.setItem("user", JSON.stringify(user));
+
+      const role = user.role || "";
+
+      // ── Init shared sidebar ──
+      initSidebar({ activePage: "leave", user });
+
+      // ── Auto-fill header user info ──
+      document.getElementById("avatar").textContent = user.name ? user.name.slice(0, 2).toUpperCase() : "??";
+      document.getElementById("userName").textContent = user.name || "Guest";
+      document.getElementById("userRole").textContent = { employee: "Employee", manager: "Manager", hr: "HR" }[role] || "";
+
+      // ── Auto-fill form from verified API data ──
+      document.getElementById("employee_name").value = user.name || "";
+      document.getElementById("employee_email").value = user.email || "";
+      document.getElementById("department").value = user.department || "";
+    };
+
+    init();
+
+    // ── Logout (header button + sidebar fallback) ──
+    document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      clearSession();
+    });
+
+    // ── Submit form ──
     document.getElementById("leaveForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = document.getElementById("submitBtn");
@@ -266,32 +266,23 @@
           }),
         });
 
-        const data = await res.json();
-
         if (!res.ok) {
+          const data = await res.json();
           errorDiv.textContent = data.message || "Submit failed";
           errorDiv.classList.remove("hidden");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
           return;
         }
 
-        successDiv.textContent = "✅ Leave request submitted! A notification email has been sent to your manager.";
+        successDiv.textContent = "Leave request submitted! A notification email has been sent to your manager.";
         successDiv.classList.remove("hidden");
         setTimeout(() => window.location.href = "index.html", 2000);
       } catch (err) {
         errorDiv.textContent = "Cannot connect to server.";
         errorDiv.classList.remove("hidden");
-      } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
       }
     });
-
-    // Logout
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.clear();
-      window.location.href = "login.html";
-    });
   </script>
-
-</body>
-</html>

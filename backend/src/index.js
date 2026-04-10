@@ -34,9 +34,9 @@ app.use(express.json());
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB Atlas connected");
+    console.log("MongoDB Atlas connected");
   } catch (error) {
-    console.error("❌ MongoDB error:", error.message);
+    console.error("MongoDB error:", error.message);
     process.exit(1);
   }
 };
@@ -46,15 +46,15 @@ const connectDB = async () => {
 // ═══════════════════════════════════════════
 const triggerN8n = async (webhookUrl, payload) => {
   if (!webhookUrl || webhookUrl.includes("yourdomain.com")) {
-    console.log("⏭️ N8n webhook not configured, skipping...");
+    console.log("N8n webhook not configured, skipping...");
     return { success: false, message: "N8n not configured" };
   }
   try {
     const response = await axios.post(webhookUrl, payload, { timeout: 15000 });
-    console.log(`✅ N8n webhook triggered: ${webhookUrl}`);
+    console.log(`N8n webhook triggered: ${webhookUrl}`);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error(`⚠️ N8n webhook error:`, error.message);
+    console.error(`N8n webhook error:`, error.message);
     return { success: false, message: error.message };
   }
 };
@@ -177,8 +177,11 @@ app.get("/api/auth/me", verifyToken, async (req, res) => {
 // ROUTES: SETTINGS (Manager email theo phòng ban)
 // ═══════════════════════════════════════════
 
-// GET /api/settings/manager-emails - Lấy email manager theo phòng ban
-app.get("/api/settings/manager-emails", async (req, res) => {
+// GET /api/settings/manager-emails - Lấy email manager theo phòng ban (chỉ HR)
+app.get("/api/settings/manager-emails", verifyToken, async (req, res) => {
+  if (req.user.role !== "hr") {
+    return res.status(403).json({ message: "Chỉ HR mới có quyền xem" });
+  }
   try {
     const setting = await Settings.findOne({ key: "manager_emails" });
     res.json(setting ? setting.value : {});
@@ -322,6 +325,7 @@ app.post("/api/leave", verifyToken, async (req, res) => {
       manager_status: "pending",
       hr_status: parseInt(leave_days) > 3 ? "pending" : "skipped",
       status: "pending",
+      manager_email: deptManagerEmail,
     });
     await leave.save();
 
@@ -421,7 +425,7 @@ app.post("/api/approval/manager", async (req, res) => {
       request.status = "rejected";
       await request.save();
 
-      // ✅ Gọi n8n → gửi email thông báo employee bị từ chối
+      // Gọi n8n → gửi email thông báo employee bị từ chối
       await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
         action: "reject",
         employeeEmail: request.employee_email,
@@ -440,14 +444,14 @@ app.post("/api/approval/manager", async (req, res) => {
       return res.json({ message: "Leave request rejected", status: "rejected" });
     }
 
-    // ✅ Manager approved
-    request.manager_decidedAt = new Date();
+    // Manager approved
+    // (manager_status + manager_decidedAt đã set ở line 417-418, KHÔNG set lại)
 
     if (request.leave_days > 3 && request.hrApprovalToken) {
       // > 3 ngày → Cần HR duyệt thêm
       await request.save();
 
-      // ✅ Gọi n8n → gửi email cho employee đang chờ HR + gửi email cho HR
+      // Gọi n8n → gửi email cho employee đang chờ HR + gửi email cho HR
       const hrLink = buildLink(request.hrApprovalToken);
       await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
         action: "waiting_hr",
@@ -479,7 +483,7 @@ app.post("/api/approval/manager", async (req, res) => {
     request.status = "approved";
     await request.save();
 
-    // ✅ Gọi n8n → gửi email thông báo employee được duyệt
+    // Gọi n8n → gửi email thông báo employee được duyệt
     await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
       action: "approve",
       employeeEmail: request.employee_email,
@@ -527,7 +531,7 @@ app.post("/api/approval/hr", async (req, res) => {
     request.status = action === "approve" ? "approved" : "rejected";
     await request.save();
 
-    // ✅ Gọi n8n HR webhook → gửi email thông báo employee
+    // Gọi n8n HR webhook → gửi email thông báo employee
     await triggerN8n(process.env.N8N_HR_WEBHOOK, {
       action: action === "approve" ? "approve" : "reject",
       employeeEmail: request.employee_email,
@@ -575,9 +579,13 @@ app.get("/api/approval/token/:token", async (req, res) => {
       leave_date: request.leave_date,
       leave_days: request.leave_days,
       reason: request.reason,
-      status: approvalType === "manager" ? request.manager_status : request.hr_status,
       approvalType,
+      // Trả về riêng để frontend phân biệt rõ luồng
+      status: approvalType === "manager" ? request.manager_status : request.hr_status,
       finalStatus: request.status,
+      // Trả về cả 2 để hiển thị luồng phê duyệt
+      manager_status: request.manager_status,
+      hr_status: request.hr_status,
     });
   } catch (error) {
     res.status(500).json({ message: "Error" });

@@ -29,6 +29,12 @@ const leaveRequestSchema = new mongoose.Schema(
       required: [true, "Leave date is required"],
     },
 
+    // Ngày kết thúc nghỉ = leave_date + leave_days - 1 (tự động tính khi tạo)
+    end_date: {
+      type: Date,
+      default: null,
+    },
+
     leave_days: {
       type: Number,
       required: [true, "Number of days is required"],
@@ -53,6 +59,16 @@ const leaveRequestSchema = new mongoose.Schema(
     hrApprovalToken: {
       type: String,
       sparse: true,
+    },
+
+    // Email người được gửi link duyệt — dùng để chặn tự duyệt đơn
+    managerApproverEmail: {
+      type: String,
+      default: null,
+    },
+    hrApproverEmail: {
+      type: String,
+      default: null,
     },
 
     // ─── Cấp 1: Manager ───

@@ -11,51 +11,8 @@
 
   <div class="flex h-screen overflow-hidden">
 
-    <!-- Sidebar -->
-    <aside class="w-60 bg-zinc-900 flex flex-col shrink-0">
-      <div class="px-6 py-5 border-b border-zinc-800">
-        <h1 class="text-white text-lg font-bold tracking-tight">
-          Approve<span class="text-blue-400">Hub</span>
-        </h1>
-        <p class="text-zinc-500 text-xs mt-0.5">Internal System</p>
-      </div>
-
-      <nav class="flex-1 px-3 py-4 space-y-1">
-        <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
-        </a>
-        <a href="leave.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-calendar-check text-base w-5"></i> Leave Request
-        </a>
-        <a href="approvals.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white">
-          <i class="fa-solid fa-clipboard-check text-base w-5"></i> Approvals
-        </a>
-        <a href="settings.html" id="navSettings" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-gear text-base w-5"></i> Settings
-        </a>
-
-        <div class="my-2 border-t border-zinc-800"></div>
-
-        <a href="rooms.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-door-open text-base w-5"></i> Meeting Rooms
-        </a>
-        <a href="book-room.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-calendar-plus text-base w-5"></i> Book Room
-        </a>
-        <a href="booking-dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-list text-base w-5"></i> My Bookings
-        </a>
-        <a href="meeting-approvals.html" id="navMeetingApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-user-check text-base w-5"></i> Room Approvals
-        </a>
-      </nav>
-
-      <div class="px-3 py-4 border-t border-zinc-800">
-        <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
-        </a>
-      </div>
-    </aside>
+    <!-- Sidebar (loaded via sidebar.js) -->
+    <div id="appSidebar"></div>
 
     <!-- Main Column -->
     <div class="flex flex-col flex-1 overflow-hidden">
@@ -70,8 +27,19 @@
             <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
             <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
           </div>
+          <button id="logoutBtn" class="ml-2 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors">
+            <i class="fa-solid fa-right-from-bracket mr-1"></i>Sign Out
+          </button>
         </div>
       </header>
+
+      <!-- Loading overlay -->
+      <div id="loadingOverlay" class="fixed inset-0 bg-zinc-100 flex items-center justify-center z-50">
+        <div class="text-center">
+          <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
+          <p class="text-sm text-zinc-400">Loading...</p>
+        </div>
+      </div>
 
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
@@ -113,26 +81,140 @@
     </div>
   </div>
 
+  <script src="sidebar.js"></script>
   <script>
-    // ─── PRODUCTION: Sua domain này thành domain thật của bạn ───
-    const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
+    // ─── PRODUCTION: Sua domain này thành domain thật ───
+    const API_URL = "https://approvehub.internalautomation.io.vn/api";
 
-    
-    // Ẩn Settings cho non-HR
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (user.role === "hr") {
-      document.getElementById("navSettings")?.classList.remove("hidden");
-    }
+    // ── clearSession (chỉ dùng cho token view, normal view dùng redirectToLogin riêng) ──
+    const clearSession = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    };
 
+    const redirectToLogin = (returnUrl) => {
+      const target = returnUrl ? `login.html?returnUrl=${encodeURIComponent(returnUrl)}` : "login.html";
+      window.location.href = target;
+    };
+
+    // Check URL for token (from email link)
+    const urlParams = new URLSearchParams(window.location.search);
+    const approvalToken = urlParams.get("token");
     const token = localStorage.getItem("token");
-    if (!token) { window.location.href = "login.html"; }
 
-    // Show user info
-    document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
-    document.getElementById("userName").textContent = user.name || "Guest";
-    const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
-    document.getElementById("userRole").textContent = roleLabels[user.role] || "";
-    document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
+    // Global — set after auth, used by renderList & HTML template
+    let userRole = "";
+
+    // ── Token-based view: manager/HR opens email link ──
+    if (approvalToken) {
+      // Show loading while validating
+      const validateAndLoad = async () => {
+        document.getElementById("loadingOverlay").classList.add("hidden");
+        if (!token) {
+          redirectToLogin(window.location.href);
+          return;
+        }
+        try {
+          const res = await fetch(`${API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            clearSession();
+            redirectToLogin(window.location.href);
+            return;
+          }
+          const me = await res.json();
+          const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
+          localStorage.setItem("user", JSON.stringify(user));
+
+          // Managers & HR can approve leave requests via token links
+          if (me.role !== "manager" && me.role !== "hr") {
+            document.getElementById("listView").innerHTML = `
+              <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
+                <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
+                <p class="text-zinc-500 font-medium">Bạn không có quyền phê duyệt đơ này.</p>
+                <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
+              </div>`;
+            return;
+          }
+          document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+          document.getElementById("userName").textContent = user.name || "Guest";
+          document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : "Manager";
+          document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
+          document.getElementById("listView").classList.add("hidden");
+          document.getElementById("tokenView").classList.remove("hidden");
+
+          // Init sidebar so user can navigate back
+          initSidebar({ activePage: "approvals", user });
+
+          // Header logout button listener (token view)
+          document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            clearSession();
+          });
+
+          // Set userRole so loadTokenRequest can use it
+          userRole = me.role;
+
+          loadTokenRequest(approvalToken);
+        } catch {
+          clearSession();
+          redirectToLogin(window.location.href);
+        }
+      };
+      validateAndLoad();
+
+    } else {
+      // ── Normal list view ──
+      document.getElementById("loadingOverlay").classList.add("hidden");
+
+      if (!token) { redirectToLogin(); return; }
+
+      // Validate token & load user
+      ;(async () => {
+        let me;
+        try {
+          const res = await fetch(`${API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) { redirectToLogin(); return; }
+          me = await res.json();
+        } catch { redirectToLogin(); return; }
+
+        const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // ── Init shared sidebar ──
+        initSidebar({ activePage: "approvals", user });
+
+        // Header logout button listener (normal view)
+        document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
+          e.preventDefault();
+          clearSession();
+        });
+
+        document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+        document.getElementById("userName").textContent = user.name || "Guest";
+        const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
+        document.getElementById("userRole").textContent = roleLabels[user.role] || "";
+        document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
+        userRole = user.role;
+
+        // Only manager/HR can see the list
+        if (user.role !== "manager" && user.role !== "hr") {
+          document.getElementById("listView").innerHTML = `
+            <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
+              <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
+              <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
+              <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
+            </div>`;
+          return;
+        }
+
+        loadRequests();
+      })();
+    }
 
     // Status badge
     const statusBadge = (status) => {
@@ -148,35 +230,6 @@
 
     let currentTab = "pending";
 
-    // Check URL for token (from email link)
-    const urlParams = new URLSearchParams(window.location.search);
-    const approvalToken = urlParams.get("token");
-
-    if (approvalToken) {
-      // ── LOGIN GATE: Token trong URL → BẮT BUỘC đăng nhập mới (xóa token cũ) ──
-      // Nếu đã đăng nhập rồi → xóa token → buộc nhập tài khoản manager/HR
-      if (token) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-      // Chuyển sang login, kèm returnUrl để quay lại sau khi đăng nhập
-      const returnUrl = encodeURIComponent(window.location.href);
-      window.location.href = `login.html?returnUrl=${returnUrl}`;
-      return;
-    } else {
-      // Normal view — yêu cầu đăng nhập + đúng vai trò
-      if (!token) { window.location.href = "login.html"; return; }
-      if (user.role !== "manager" && user.role !== "hr") {
-        document.getElementById("listView").innerHTML = `
-          <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
-            <p class="text-zinc-500">Bạn không có quyền truy cập trang này.</p>
-            <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
-          </div>`;
-        return;
-      }
-      loadRequests();
-    }
-
     async function loadTokenRequest(token) {
       try {
         const res = await fetch(`${API_URL}/approval/token/${token}`);
@@ -187,6 +240,10 @@
           return;
         }
 
+        // Dùng đúng status dựa trên approvalType
+        const myStatus = data.approvalType === "manager" ? data.manager_status : data.hr_status;
+        const otherStatus = data.approvalType === "manager" ? data.hr_status : data.manager_status;
+
         document.getElementById("tokenDetails").innerHTML = `
           <p><strong>Employee:</strong> ${data.employee_name}</p>
           <p><strong>Email:</strong> ${data.employee_email}</p>
@@ -194,15 +251,21 @@
           <p><strong>Leave Date:</strong> ${new Date(data.leave_date).toLocaleDateString()}</p>
           <p><strong>Number of Days:</strong> ${data.leave_days} day${data.leave_days > 1 ? "s" : ""}</p>
           <p><strong>Reason:</strong> ${data.reason}</p>
-          <p><strong>Approval Level:</strong> ${data.approvalType === "manager" ? "Manager Review" : "HR Final Review"}</p>
-          <p><strong>Current Status:</strong> ${statusBadge(data.status)}</p>
+          ${data.approvalType === "manager" ? `
+            <p><strong>Manager Decision:</strong> ${statusBadge(data.manager_status)}</p>
+            ${data.manager_status !== "pending" ? `<p><strong>HR Decision:</strong> ${statusBadge(data.hr_status)}</p>` : ""}
+          ` : `
+            <p><strong>Manager Decision:</strong> ${statusBadge(data.manager_status)}</p>
+            <p><strong>HR Decision:</strong> ${statusBadge(data.hr_status)}</p>
+          `}
+          <p><strong>Final Status:</strong> ${statusBadge(data.finalStatus)}</p>
         `;
 
         const actionsDiv = document.getElementById("tokenActions");
         const resultDiv = document.getElementById("tokenResult");
 
-        if (data.status === "pending") {
-          const approvalType = data.approvalType === "hr" ? "hr" : "manager";
+        if (myStatus === "pending") {
+          const approvalType = data.approvalType;
           actionsDiv.innerHTML = `
             <button onclick="handleApproval('${token}', 'approve', '${approvalType}')"
               class="px-6 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors flex items-center gap-2">
@@ -215,7 +278,7 @@
           `;
         } else {
           resultDiv.classList.remove("hidden");
-          resultDiv.innerHTML = `<p class="text-sm text-zinc-500">This request has already been <strong>${data.status}</strong>.</p>`;
+          resultDiv.innerHTML = `<p class="text-sm text-zinc-500">You have already <strong>${myStatus}</strong> this request.</p>`;
         }
       } catch (err) {
         document.getElementById("tokenDetails").innerHTML = `<p class="text-red-500">Error loading request</p>`;
@@ -231,13 +294,16 @@
         const endpoint = type === "hr" ? `${API_URL}/approval/hr` : `${API_URL}/approval/manager`;
         const res = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({ token, action }),
         });
         const data = await res.json();
 
         if (res.ok) {
-          resultDiv.innerHTML = `<p class="text-sm text-green-600 font-medium"> ${data.message}</p>`;
+          resultDiv.innerHTML = `<p class="text-sm text-green-600 font-medium">${data.message}</p>`;
           setTimeout(() => window.close(), 2000);
         } else {
           resultDiv.innerHTML = `<p class="text-sm text-red-500">${data.message}</p>`;
@@ -254,7 +320,6 @@
         });
         const data = await res.json();
         if (!res.ok) return;
-
         renderList(data);
       } catch (err) {
         console.error("Error:", err);
@@ -263,9 +328,15 @@
 
     function renderList(requests) {
       const filtered = requests.filter(r => {
-        if (currentTab === "pending") return r.status === "pending";
+        if (currentTab === "pending") {
+          // Manager: chưa duyệt HOẶC đã duyệt nhưng chờ HR (status vẫn pending)
+          if (userRole === "manager") return r.manager_status === "pending" || (r.manager_status === "approved" && r.status === "pending");
+          // HR: chỉ thấy request đã được manager duyệt nhưng chưa duyệt HR
+          if (userRole === "hr") return r.manager_status === "approved" && r.hr_status === "pending";
+        }
         if (currentTab === "approved") return r.status === "approved";
         if (currentTab === "rejected") return r.status === "rejected";
+        return false;
       });
 
       const container = document.getElementById("pendingList");
@@ -278,7 +349,36 @@
       }
       empty.classList.add("hidden");
 
-      container.innerHTML = filtered.map(r => `
+      container.innerHTML = filtered.map(r => {
+        // ── Role-based badge logic ──
+        // Manager pending card → show manager_status badge
+        // HR pending card → show hr_status badge (fixes Issue 10)
+        // Approved/Rejected tab → show final r.status
+        let badgeHtml;
+        if (currentTab === "pending") {
+          if (userRole === "hr") {
+            badgeHtml = statusBadge(r.hr_status); // HR sees their own hr_status
+          } else if (userRole === "manager" && r.manager_status === "approved" && r.status === "pending") {
+            badgeHtml = `<span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
+              <i class="fa-solid fa-hourglass-half mr-1"></i>Chờ HR duyệt
+            </span>`;
+          } else {
+            badgeHtml = statusBadge(r.manager_status);
+          }
+        } else {
+          badgeHtml = statusBadge(r.status);
+        }
+
+        // Determine which token & endpoint to use based on role
+        const isManager = userRole === "manager";
+        const isHR = userRole === "hr";
+        const canApproveAsManager = isManager && r.manager_status === "pending";
+        // HR chỉ duyệt đơ > 3 ngày (có hrApprovalToken)
+        const canApproveAsHR = isHR && r.manager_status === "approved" && r.hr_status === "pending" && !!r.hrApprovalToken;
+        const activeToken = canApproveAsHR ? r.hrApprovalToken : r.managerApprovalToken;
+        const activeEndpoint = canApproveAsHR ? `${API_URL}/approval/hr` : `${API_URL}/approval/manager`;
+
+        return `
         <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-6">
           <div class="flex items-start justify-between">
             <div>
@@ -297,14 +397,71 @@
                 <p><i class="fa-solid fa-pen mr-2 text-zinc-400"></i><strong>Reason:</strong> ${r.reason}</p>
               </div>
             </div>
-            <div class="text-right">
-              <div class="mb-2">${statusBadge(r.status)}</div>
-              ${r.leave_days > 3 ? `<span class="text-xs text-red-500 font-medium"><i class="fa-solid fa-info-circle mr-1"></i>Needs HR</span>` : ""}
-              ${r.manager_status !== "pending" && r.status === "pending" ? `<p class="text-xs text-yellow-500 mt-1">Waiting for HR</p>` : ""}
+            <div class="text-right shrink-0 flex flex-col items-end gap-2">
+              ${badgeHtml}
+              ${r.leave_days > 3 ? `<p class="text-xs text-red-500 font-medium"><i class="fa-solid fa-info-circle mr-1"></i>Needs HR</p>` : ""}
+              ${(canApproveAsManager || canApproveAsHR) ? `
+                <div class="flex gap-2 mt-2">
+                  <button
+                    onclick="quickApprove('${activeToken}', '${activeEndpoint}', this)"
+                    class="px-4 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-check"></i> Approve
+                  </button>
+                  <button
+                    onclick="quickReject('${activeToken}', '${activeEndpoint}', this)"
+                    class="px-4 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-xmark"></i> Reject
+                  </button>
+                </div>` : ""}
             </div>
           </div>
-        </div>
-      `).join("");
+        </div>`;
+      }).join("");
+    }
+
+    // ── Quick Approve / Reject ──
+    async function quickApprove(token, endpoint, btn) {
+      await handleLeaveAction(token, endpoint, "approve", btn);
+    }
+
+    async function quickReject(token, endpoint, btn) {
+      await handleLeaveAction(token, endpoint, "reject", btn);
+    }
+
+    async function handleLeaveAction(token, endpoint, action, btn) {
+      // Disable both buttons in the row
+      const row = btn.closest(".bg-white");
+      const buttons = row.querySelectorAll("button");
+      buttons.forEach(b => { b.disabled = true; b.classList.add("opacity-50"); });
+
+      const badgeArea = row.querySelector(".shrink-0");
+      badgeArea.innerHTML = `<p class="text-xs text-blue-500 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Processing...</p>`;
+
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ token, action }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          const color = action === "approve" ? "text-green-600" : "text-red-600";
+          const icon = action === "approve" ? "fa-check-circle" : "fa-xmark-circle";
+          badgeArea.innerHTML = `<p class="text-xs font-medium ${color}"><i class="fa-solid ${icon} mr-1"></i>${data.message || (action === "approve" ? "Approved" : "Rejected")}</p>`;
+          // Reload after 1.5s so the item disappears from Pending tab
+          setTimeout(loadRequests, 1500);
+        } else {
+          badgeArea.innerHTML = `<p class="text-xs text-red-500 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>${data.message || "Error"}</p>`;
+          buttons.forEach(b => { b.disabled = false; b.classList.remove("opacity-50"); });
+        }
+      } catch {
+        badgeArea.innerHTML = `<p class="text-xs text-red-500 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>Connection error</p>`;
+        buttons.forEach(b => { b.disabled = false; b.classList.remove("opacity-50"); });
+      }
     }
 
     // Tabs
@@ -320,11 +477,6 @@
       });
     });
 
-    // Logout
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.clear();
-      window.location.href = "login.html";
-    });
   </script>
 
 </body>
