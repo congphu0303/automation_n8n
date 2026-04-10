@@ -19,10 +19,6 @@
 
       <!-- Header -->
       <header class="h-16 bg-white border-b border-zinc-200 flex items-center px-6 gap-4 shrink-0 shadow-sm">
-        <div class="flex-1 max-w-md flex items-center gap-2 bg-zinc-100 border border-zinc-200 rounded-lg px-3 py-2">
-          <i class="fa-solid fa-magnifying-glass text-zinc-400 text-sm"></i>
-          <input type="text" placeholder="Search..." class="flex-1 bg-transparent text-sm text-zinc-700 outline-none placeholder:text-zinc-400" />
-        </div>
         <div class="flex-1"></div>
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold" id="avatar"></div>
@@ -30,6 +26,9 @@
             <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
             <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
           </div>
+          <button id="logoutBtn" class="ml-2 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors">
+            <i class="fa-solid fa-right-from-bracket mr-1"></i>Sign Out
+          </button>
         </div>
       </header>
 

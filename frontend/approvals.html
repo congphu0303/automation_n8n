@@ -86,7 +86,12 @@
     // ─── PRODUCTION: Sua domain này thành domain thật ───
     const API_URL = "https://approvehub.internalautomation.io.vn/api";
 
-    // ── clearSession (chỉ dùng cho token view, normal view dùng redirectToLogin riêng) ──
+    // Check URL for token (from email link) — KHAI BAO TRUOC, dung moi noi
+    const urlParams = new URLSearchParams(window.location.search);
+    const approvalToken = urlParams.get("token");
+    const token = localStorage.getItem("token");
+
+    // ── clearSession ──
     const clearSession = () => {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -94,32 +99,41 @@
     };
 
     const redirectToLogin = (returnUrl) => {
+      if (approvalToken) {
+        sessionStorage.setItem("pendingApprovalToken", approvalToken);
+      }
       const target = returnUrl ? `login.html?returnUrl=${encodeURIComponent(returnUrl)}` : "login.html";
       window.location.href = target;
     };
 
-    // Check URL for token (from email link)
-    const urlParams = new URLSearchParams(window.location.search);
-    const approvalToken = urlParams.get("token");
-    const token = localStorage.getItem("token");
+    // ── Khôi phục approval token từ sessionStorage (khi quay lại từ login) ──
+    if (!approvalToken) {
+      const savedToken = sessionStorage.getItem("pendingApprovalToken");
+      if (savedToken) {
+        sessionStorage.removeItem("pendingApprovalToken");
+        window.location.href = `approvals.html?token=${savedToken}`;
+        return;
+      }
+    }
 
     // Global — set after auth, used by renderList & HTML template
     let userRole = "";
 
     // ── Token-based view: manager/HR opens email link ──
     if (approvalToken) {
-      // Show loading while validating
       const validateAndLoad = async () => {
-        document.getElementById("loadingOverlay").classList.add("hidden");
-        if (!token) {
-          redirectToLogin(window.location.href);
-          return;
-        }
         try {
+          if (!token) {
+            document.getElementById("loadingOverlay").classList.add("hidden");
+            redirectToLogin(window.location.href);
+            return;
+          }
+
           const res = await fetch(`${API_URL}/auth/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!res.ok) {
+            document.getElementById("loadingOverlay").classList.add("hidden");
             clearSession();
             redirectToLogin(window.location.href);
             return;
@@ -128,7 +142,6 @@
           const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
           localStorage.setItem("user", JSON.stringify(user));
 
-          // Managers & HR can approve leave requests via token links
           if (me.role !== "manager" && me.role !== "hr") {
             document.getElementById("listView").innerHTML = `
               <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
@@ -143,35 +156,30 @@
           document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : "Manager";
           document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
           document.getElementById("listView").classList.add("hidden");
-          document.getElementById("tokenView").classList.remove("hidden");
+          document.getElementById("tokenView").classList.add("hidden");
 
-          // Init sidebar so user can navigate back
           initSidebar({ activePage: "approvals", user });
 
-          // Header logout button listener (token view)
           document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
             e.preventDefault();
             clearSession();
           });
 
-          // Set userRole so loadTokenRequest can use it
           userRole = me.role;
-
           loadTokenRequest(approvalToken);
         } catch {
           clearSession();
           redirectToLogin(window.location.href);
+        } finally {
+          document.getElementById("loadingOverlay").classList.add("hidden");
         }
       };
       validateAndLoad();
 
     } else {
       // ── Normal list view ──
-      document.getElementById("loadingOverlay").classList.add("hidden");
-
       if (!token) { redirectToLogin(); return; }
 
-      // Validate token & load user
       ;(async () => {
         let me;
         try {
@@ -180,39 +188,40 @@
           });
           if (!res.ok) { redirectToLogin(); return; }
           me = await res.json();
-        } catch { redirectToLogin(); return; }
 
-        const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
-        localStorage.setItem("user", JSON.stringify(user));
+          const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
+          localStorage.setItem("user", JSON.stringify(user));
 
-        // ── Init shared sidebar ──
-        initSidebar({ activePage: "approvals", user });
+          initSidebar({ activePage: "approvals", user });
 
-        // Header logout button listener (normal view)
-        document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-          e.preventDefault();
-          clearSession();
-        });
+          document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            clearSession();
+          });
 
-        document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-        document.getElementById("userName").textContent = user.name || "Guest";
-        const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
-        document.getElementById("userRole").textContent = roleLabels[user.role] || "";
-        document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
-        userRole = user.role;
+          document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+          document.getElementById("userName").textContent = user.name || "Guest";
+          const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
+          document.getElementById("userRole").textContent = roleLabels[user.role] || "";
+          document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
+          userRole = user.role;
 
-        // Only manager/HR can see the list
-        if (user.role !== "manager" && user.role !== "hr") {
-          document.getElementById("listView").innerHTML = `
-            <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
-              <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
-              <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
-              <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
-            </div>`;
-          return;
+          if (user.role !== "manager" && user.role !== "hr") {
+            document.getElementById("listView").innerHTML = `
+              <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
+                <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
+                <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
+                <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
+              </div>`;
+            return;
+          }
+
+          loadRequests();
+        } catch {
+          redirectToLogin();
+        } finally {
+          document.getElementById("loadingOverlay").classList.add("hidden");
         }
-
-        loadRequests();
       })();
     }
 
