@@ -39,9 +39,6 @@
         <a href="book-room.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
           <i class="fa-solid fa-calendar-plus text-base w-5"></i> Book Room
         </a>
-        <a href="booking-dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-          <i class="fa-solid fa-list text-base w-5"></i> My Bookings
-        </a>
         <a href="meeting-approvals.html" id="navMeetingApprovals" class="hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
           <i class="fa-solid fa-user-check text-base w-5"></i> Room Approvals
         </a>
@@ -133,7 +130,7 @@
   </div>
 
   <script>
-    const API_URL = "http://localhost:3001/api";
+    const API_URL = window.location.hostname === "localhost" ? "http://localhost:3001/api" : "https://api.internalautomation.io.vn/api";
 
     // Check auth
     const token = localStorage.getItem("token");

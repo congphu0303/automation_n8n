@@ -96,8 +96,7 @@
   </div>
 
   <script>
-    // ─── PRODUCTION: Sửa domain này thành domain thật của bạn ───
-    const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
+    const API_URL = window.location.hostname === "localhost" ? "http://localhost:3001/api" : "https://api.internalautomation.io.vn/api";
 
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "{}");
