@@ -10,6 +10,7 @@ const User = require("./models/User");
 const LeaveRequest = require("./models/LeaveRequest");
 const Room = require("./models/Room");
 const Booking = require("./models/Booking");
+const Settings = require("./models/Settings");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -173,6 +174,93 @@ app.get("/api/auth/me", verifyToken, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════
+// ROUTES: USER MANAGEMENT (HR only)
+// ═══════════════════════════════════════════
+
+app.get("/api/users", verifyToken, async (req, res) => {
+  if (req.user.role !== "hr") return res.status(403).json({ message: "Chỉ HR mới có quyền xem" });
+  try {
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching users" });
+  }
+});
+
+app.post("/api/users", verifyToken, async (req, res) => {
+  if (req.user.role !== "hr") return res.status(403).json({ message: "Chỉ HR mới có quyền tạo" });
+  try {
+    const { name, email, password, department, role } = req.body;
+    if (!name || !email || !password || !department || !role)
+      return res.status(400).json({ message: "All fields required" });
+    if (await User.findOne({ email: email.toLowerCase() }))
+      return res.status(400).json({ message: "Email already exists" });
+    const hashed = await bcrypt.hash(password, 10);
+    const user = new User({ name, email, password: hashed, department, role });
+    await user.save();
+    res.status(201).json({ message: "User created", user: { ...user.toObject(), password: undefined } });
+  } catch (error) {
+    res.status(500).json({ message: "Error creating user" });
+  }
+});
+
+app.put("/api/users/:id", verifyToken, async (req, res) => {
+  if (req.user.role !== "hr") return res.status(403).json({ message: "Chỉ HR mới có quyền sửa" });
+  try {
+    const { name, department, role, password } = req.body;
+    const update = {};
+    if (name) update.name = name;
+    if (department) update.department = department;
+    if (role) update.role = role;
+    if (password) update.password = await bcrypt.hash(password, 10);
+    const user = await User.findByIdAndUpdate(req.params.id, update, { new: true }).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User updated", user });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating user" });
+  }
+});
+
+app.delete("/api/users/:id", verifyToken, async (req, res) => {
+  if (req.user.role !== "hr") return res.status(403).json({ message: "Chỉ HR mới có quyền xóa" });
+  try {
+    if (req.params.id === req.user.userId)
+      return res.status(400).json({ message: "Không thể xóa tài khoản của chính mình" });
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting user" });
+  }
+});
+
+// ═══════════════════════════════════════════
+// ROUTES: SETTINGS (HR only)
+// ═══════════════════════════════════════════
+
+app.get("/api/settings/manager-emails", verifyToken, async (req, res) => {
+  if (req.user.role !== "hr") return res.status(403).json({ message: "Chỉ HR mới có quyền xem" });
+  try {
+    const setting = await Settings.findOne({ key: "manager_emails" });
+    res.json(setting ? setting.value : {});
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching settings" });
+  }
+});
+
+app.put("/api/settings/manager-emails", verifyToken, async (req, res) => {
+  if (req.user.role !== "hr") return res.status(403).json({ message: "Chỉ HR mới có quyền cập nhật" });
+  try {
+    const { IT, Marketing, Finance, Sales, hrEmail } = req.body;
+    const value = { IT, Marketing, Finance, Sales, hrEmail };
+    await Settings.findOneAndUpdate({ key: "manager_emails" }, { key: "manager_emails", value }, { upsert: true });
+    res.json({ message: "Cập nhật thành công", value });
+  } catch (error) {
+    res.status(500).json({ message: "Error saving settings" });
+  }
+});
+
+// ═══════════════════════════════════════════
 // ROUTES: LEAVE REQUEST
 // ═══════════════════════════════════════════
 
@@ -190,6 +278,12 @@ app.post("/api/leave", verifyToken, async (req, res) => {
     // Tạo tokens
     const managerApprovalToken = generateToken();
     const hrApprovalToken = parseInt(leave_days) > 3 ? generateToken() : null;
+
+    // Lấy manager email theo phòng ban từ Settings DB
+    const settings = await Settings.findOne({ key: "manager_emails" });
+    const managerEmails = settings ? settings.value : {};
+    const deptManagerEmail = managerEmails[user.department] || process.env.MANAGER_EMAIL || "quanganh.hs2005@gmail.com";
+    const hrEmail = managerEmails.hrEmail || process.env.HR_EMAIL || "quanganh.hs2004@gmail.com";
 
     // Tạo đơ
     const leave = new LeaveRequest({
@@ -220,10 +314,10 @@ app.post("/api/leave", verifyToken, async (req, res) => {
       reason,
       managerApprovalToken,
       managerApprovalLink: buildLink(managerApprovalToken),
-      managerEmail: process.env.MANAGER_EMAIL,
+      managerEmail: deptManagerEmail,
       hrApprovalToken,
       hrApprovalLink: hrApprovalToken ? buildLink(hrApprovalToken) : null,
-      hrEmail: process.env.HR_EMAIL,
+      hrEmail: hrEmail,
       requiresHrApproval: parseInt(leave_days) > 3,
     };
 
