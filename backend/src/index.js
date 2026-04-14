@@ -309,7 +309,7 @@ app.post("/api/leave", verifyToken, async (req, res) => {
     // Lấy manager email theo phòng ban từ Settings
     const settings = await Settings.findOne({ key: "manager_emails" });
     const managerEmails = settings ? settings.value : {};
-    const deptManagerEmail = managerEmails[user.department] || managerEmails["HR"] || "phupc.23ite@vku.udn.vn";
+    const deptManagerEmail = managerEmails[user.department] || managerEmails.hrEmail || "phupc.23ite@vku.udn.vn";
 
     // Tạo đơ
     const leave = new LeaveRequest({
@@ -346,6 +346,12 @@ app.post("/api/leave", verifyToken, async (req, res) => {
       requiresHrApproval: parseInt(leave_days) > 3,
       managerEmail: deptManagerEmail,
       hrEmail: managerEmails.hrEmail || "phupc.23ite@vku.udn.vn",
+      managerEmails: {
+        IT: managerEmails.IT,
+        Marketing: managerEmails.Marketing,
+        Finance: managerEmails.Finance,
+        Sales: managerEmails.Sales
+      }
     };
 
     // Gọi N8n (không block response)
@@ -425,22 +431,6 @@ app.post("/api/approval/manager", async (req, res) => {
       request.status = "rejected";
       await request.save();
 
-      // Gọi n8n → gửi email thông báo employee bị từ chối
-      await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
-        action: "reject",
-        employeeEmail: request.employee_email,
-        employeeName: request.employee_name,
-        leaveDate: request.leave_date,
-        leaveDays: request.leave_days,
-        reason: request.reason,
-        body: {
-          employeeName: request.employee_name,
-          leaveDate: request.leave_date,
-          leaveDays: request.leave_days,
-          reason: request.reason,
-        },
-      });
-
       return res.json({ message: "Leave request rejected", status: "rejected" });
     }
 
@@ -450,26 +440,6 @@ app.post("/api/approval/manager", async (req, res) => {
     if (request.leave_days > 3 && request.hrApprovalToken) {
       // > 3 ngày → Cần HR duyệt thêm
       await request.save();
-
-      // Gọi n8n → gửi email cho employee đang chờ HR + gửi email cho HR
-      const hrLink = buildLink(request.hrApprovalToken);
-      await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
-        action: "waiting_hr",
-        employeeEmail: request.employee_email,
-        employeeName: request.employee_name,
-        leaveDate: request.leave_date,
-        leaveDays: request.leave_days,
-        reason: request.reason,
-        hrApprovalLink: hrLink,
-        body: {
-          employeeName: request.employee_name,
-          employeeEmail: request.employee_email,
-          leaveDate: request.leave_date,
-          leaveDays: request.leave_days,
-          reason: request.reason,
-          hrApprovalLink: hrLink,
-        },
-      });
 
       return res.json({
         message: "Approved by manager. Sent to HR for final approval",
@@ -482,22 +452,6 @@ app.post("/api/approval/manager", async (req, res) => {
     // ≤ 3 ngày → Duyệt xong
     request.status = "approved";
     await request.save();
-
-    // Gọi n8n → gửi email thông báo employee được duyệt
-    await triggerN8n(process.env.N8N_MANAGER_WEBHOOK, {
-      action: "approve",
-      employeeEmail: request.employee_email,
-      employeeName: request.employee_name,
-      leaveDate: request.leave_date,
-      leaveDays: request.leave_days,
-      reason: request.reason,
-      body: {
-        employeeName: request.employee_name,
-        leaveDate: request.leave_date,
-        leaveDays: request.leave_days,
-        reason: request.reason,
-      },
-    });
 
     res.json({ message: "Leave request fully approved", status: "approved" });
   } catch (error) {
@@ -530,23 +484,6 @@ app.post("/api/approval/hr", async (req, res) => {
     request.hr_decidedAt = new Date();
     request.status = action === "approve" ? "approved" : "rejected";
     await request.save();
-
-    // Gọi n8n HR webhook → gửi email thông báo employee
-    await triggerN8n(process.env.N8N_HR_WEBHOOK, {
-      action: action === "approve" ? "approve" : "reject",
-      employeeEmail: request.employee_email,
-      employeeName: request.employee_name,
-      leaveDate: request.leave_date,
-      leaveDays: request.leave_days,
-      reason: request.reason,
-      body: {
-        employeeName: request.employee_name,
-        employeeEmail: request.employee_email,
-        leaveDate: request.leave_date,
-        leaveDays: request.leave_days,
-        reason: request.reason,
-      },
-    });
 
     res.json({ message: `HR ${request.status}`, status: request.status });
   } catch (error) {
