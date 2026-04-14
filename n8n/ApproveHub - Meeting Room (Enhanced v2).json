@@ -1,0 +1,2294 @@
+{
+  "name": "ApproveHub - Meeting Room (Enhanced v2)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nhan-yeu-cau-dat-phong",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "533e76da-9780-4b1a-99bf-541e0f1d0ab2",
+      "name": "Webhook Nhận Booking",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        368
+      ],
+      "webhookId": "approvehub-meeting-room"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json.body || $input.first().json;\nconst bookingId = data.bookingId || data.booking_id || ('BK-' + Date.now());\nconst requesterName = data.requesterName || data.requester_name || '';\nconst requesterEmail = data.requesterEmail || data.requester_email || '';\nconst requesterDept = data.department || data.dept || 'N/A';\nconst roomName = data.roomName || data.room_name || '';\nconst roomCapacity = parseInt(data.roomCapacity || data.room_capacity || 10);\nconst meetingDate = data.meetingDate || data.meeting_date || '';\nconst startTime = data.startTime || data.start_time || '';\nconst endTime = data.endTime || data.end_time || '';\nconst purpose = data.purpose || '';\nconst attendees = parseInt(data.attendees || 1);\nconst priority = data.priority || 'normal';\nconst equipmentNeeded = data.equipmentNeeded || data.equipment_needed || [];\nconst managerEmail = data.managerEmail || data.manager_email || 'quanganh.hs2005@gmail.com';\nconst notes = data.notes || '';\n\n// Tính số giờ họp\nlet durationHours = 1;\ntry {\n  const [sh, sm] = startTime.split(':').map(Number);\n  const [eh, em] = endTime.split(':').map(Number);\n  durationHours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;\n} catch(e) {}\n\nconst valid = !!(requesterEmail && requesterName && roomName && meetingDate && startTime && endTime && durationHours > 0);\nconst overCapacity = attendees > roomCapacity;\nconst tooLong = durationHours > 8;\n\nreturn [{ json: {\n  booking_id: bookingId,\n  requester_name: requesterName,\n  requester_email: requesterEmail,\n  requester_dept: requesterDept,\n  room_name: roomName,\n  room_capacity: roomCapacity,\n  meeting_date: meetingDate,\n  start_time: startTime,\n  end_time: endTime,\n  purpose,\n  attendees,\n  priority,\n  equipment_needed: Array.isArray(equipmentNeeded) ? equipmentNeeded.join(', ') : equipmentNeeded,\n  manager_email: managerEmail,\n  notes,\n  duration_hours: durationHours,\n  created_at: new Date().toISOString(),\n  valid,\n  over_capacity: overCapacity,\n  too_long: tooLong\n}}];"
+      },
+      "id": "dbc2d789-416f-408e-a607-57b2fa03091e",
+      "name": "Normalize & Enrich Dữ liệu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valid-check",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f6b8e4a1-21a4-4a27-94dc-c36a5491b095",
+      "name": "Dữ liệu hợp lệ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"error\", \"message\": \"Thiếu thông tin bắt buộc: tên, email, phòng, ngày, giờ bắt đầu, giờ kết thúc\" }",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c8ecb76e-b511-4047-bb47-e951fff557a3",
+      "name": "Lỗi Validation (400)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "capacity-check",
+              "leftValue": "={{ $json.over_capacity }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a3c17402-f5db-4231-8d08-df9c0800b04e",
+      "name": "Vượt sức chứa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"error\", \"message\": \"Số người tham dự vượt quá sức chứa của phòng\" }",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "76e45b22-a92e-4813-a594-a6aebb4622c0",
+      "name": "Lỗi Vượt sức chứa",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "room_name",
+              "lookupValue": "={{ $json.room_name }}"
+            },
+            {
+              "lookupColumn": "meeting_date",
+              "lookupValue": "={{ $json.meeting_date }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "approved"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eab2192e-24b5-4ec5-a1b5-5151704b00c3",
+      "name": "Kiểm tra Xung đột Lịch",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -928,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const newStart = $('Normalize & Enrich Dữ liệu').item.json.start_time;\nconst newEnd = $('Normalize & Enrich Dữ liệu').item.json.end_time;\nconst existing = $input.all();\n\nfunction toMinutes(t) {\n  const [h, m] = t.split(':').map(Number);\n  return h * 60 + m;\n}\n\nconst newS = toMinutes(newStart);\nconst newE = toMinutes(newEnd);\n\nlet hasConflict = false;\nlet conflictInfo = null;\n\nfor (const item of existing) {\n  const exS = toMinutes(item.json.start_time || '00:00');\n  const exE = toMinutes(item.json.end_time || '00:00');\n  if (newS < exE && newE > exS) {\n    hasConflict = true;\n    conflictInfo = { conflicting_booking: item.json.booking_id, conflicting_time: item.json.start_time + ' - ' + item.json.end_time };\n    break;\n  }\n}\n\nconst base = $('Normalize & Enrich Dữ liệu').item.json;\nreturn [{ json: { ...base, has_conflict: hasConflict, conflict_info: conflictInfo } }];"
+      },
+      "id": "89b7c468-80f9-470a-8c88-e21d93786bee",
+      "name": "Phát hiện Trùng Lịch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "conflict-check",
+              "leftValue": "={{ $json.has_conflict }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1c5f9917-5d99-422c-8813-630d2833b1ca",
+      "name": "Có xung đột lịch?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.requester_email }}",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[⚠️ Xung đột] Phòng {{ $json.room_name }} đã được đặt vào khung giờ này",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:2px solid #f59e0b;padding:24px;border-radius:8px\">\n<h2 style=\"color:#f59e0b\">⚠️ Lịch bị trùng!</h2>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Phòng <b>{{ $json.room_name }}</b> vào ngày <b>{{ $json.meeting_date }}</b> từ <b>{{ $json.start_time }} - {{ $json.end_time }}</b> đã có người đặt trước.</p>\n<p>Vui lòng chọn khung giờ khác hoặc liên hệ quản lý.</p>\n</div>",
+        "options": {}
+      },
+      "id": "ab880e22-f592-42ef-915f-d38a750a5643",
+      "name": "Email Thông báo Xung đột",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        560
+      ],
+      "webhookId": "f24eecf8-5b27-4fe2-9746-eea9e667b2a0",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"conflict\", \"message\": \"Phòng đã được đặt trong khung giờ này\" }",
+        "options": {
+          "responseCode": 409
+        }
+      },
+      "id": "23e0ac04-ff1d-48b1-8723-f20edb5200f3",
+      "name": "Phản hồi Xung đột (409)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        32,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "priority-check",
+              "leftValue": "={{ $json.priority }}",
+              "rightValue": "urgent",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cffa8299-b84e-46d2-8d80-feb2bdd18e07",
+      "name": "Ưu tiên Khẩn cấp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $input.first().json;\nreturn [{ json: { ...base, status: 'pending', auto_approved: false, approval_deadline: new Date(Date.now() + 24*3600*1000).toISOString() } }];"
+      },
+      "id": "b2061958-8667-4d4a-8b4f-c985ba9f81f5",
+      "name": "Đánh dấu Pending (Normal)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $input.first().json;\nreturn [{ json: { ...base, status: 'pending_urgent', auto_approved: false, approval_deadline: new Date(Date.now() + 2*3600*1000).toISOString() } }];"
+      },
+      "id": "1c86faee-10ad-4d0f-a958-fbd0dd7cb418",
+      "name": "Đánh dấu Pending (Urgent)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requester_name",
+              "displayName": "requester_name",
+              "type": "string"
+            },
+            {
+              "id": "requester_email",
+              "displayName": "requester_email",
+              "type": "string"
+            },
+            {
+              "id": "requester_dept",
+              "displayName": "requester_dept",
+              "type": "string"
+            },
+            {
+              "id": "room_name",
+              "displayName": "room_name",
+              "type": "string"
+            },
+            {
+              "id": "meeting_date",
+              "displayName": "meeting_date",
+              "type": "string"
+            },
+            {
+              "id": "start_time",
+              "displayName": "start_time",
+              "type": "string"
+            },
+            {
+              "id": "end_time",
+              "displayName": "end_time",
+              "type": "string"
+            },
+            {
+              "id": "purpose",
+              "displayName": "purpose",
+              "type": "string"
+            },
+            {
+              "id": "attendees",
+              "displayName": "attendees",
+              "type": "string"
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "type": "string"
+            },
+            {
+              "id": "equipment_needed",
+              "displayName": "equipment_needed",
+              "type": "string"
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "type": "string"
+            },
+            {
+              "id": "duration_hours",
+              "displayName": "duration_hours",
+              "type": "string"
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string"
+            },
+            {
+              "id": "approval_deadline",
+              "displayName": "approval_deadline",
+              "type": "string"
+            },
+            {
+              "id": "manager_email",
+              "displayName": "manager_email",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "964906a2-f476-4876-9d44-027affc7b747",
+      "name": "Lưu Google Sheets (Normal)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        80,
+        256
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requester_name",
+              "displayName": "requester_name",
+              "type": "string"
+            },
+            {
+              "id": "requester_email",
+              "displayName": "requester_email",
+              "type": "string"
+            },
+            {
+              "id": "requester_dept",
+              "displayName": "requester_dept",
+              "type": "string"
+            },
+            {
+              "id": "room_name",
+              "displayName": "room_name",
+              "type": "string"
+            },
+            {
+              "id": "meeting_date",
+              "displayName": "meeting_date",
+              "type": "string"
+            },
+            {
+              "id": "start_time",
+              "displayName": "start_time",
+              "type": "string"
+            },
+            {
+              "id": "end_time",
+              "displayName": "end_time",
+              "type": "string"
+            },
+            {
+              "id": "purpose",
+              "displayName": "purpose",
+              "type": "string"
+            },
+            {
+              "id": "attendees",
+              "displayName": "attendees",
+              "type": "string"
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "type": "string"
+            },
+            {
+              "id": "equipment_needed",
+              "displayName": "equipment_needed",
+              "type": "string"
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "type": "string"
+            },
+            {
+              "id": "duration_hours",
+              "displayName": "duration_hours",
+              "type": "string"
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string"
+            },
+            {
+              "id": "approval_deadline",
+              "displayName": "approval_deadline",
+              "type": "string"
+            },
+            {
+              "id": "manager_email",
+              "displayName": "manager_email",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "56701661-df67-4112-8279-5bd3d9113479",
+      "name": "Lưu Google Sheets (Urgent)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        80,
+        464
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.requester_email }}",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[Xác nhận] Đặt phòng {{ $json.room_name }} đang chờ phê duyệt - #{{ $json.booking_id }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:620px;margin:auto;border:1px solid #ddd;padding:24px;border-radius:8px\">\n<div style=\"background:#2563eb;color:#fff;padding:16px;border-radius:6px 6px 0 0;margin:-24px -24px 20px\">\n<h2 style=\"margin:0\">📅 ApproveHub - Xác nhận Đặt phòng</h2>\n</div>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Yêu cầu đặt phòng của bạn đã được ghi nhận và đang chờ quản lý phê duyệt.</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc;border-radius:6px\">\n<tr><td style=\"padding:8px 12px;color:#555;width:150px\"><b>🔢 Mã Booking:</b></td><td style=\"padding:8px 12px\"><code style=\"background:#e2e8f0;padding:2px 6px;border-radius:4px\">{{ $json.booking_id }}</code></td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>🏢 Phòng họp:</b></td><td style=\"padding:8px 12px\">{{ $json.room_name }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>📆 Ngày:</b></td><td style=\"padding:8px 12px\">{{ $json.meeting_date }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>⏰ Thời gian:</b></td><td style=\"padding:8px 12px\">{{ $json.start_time }} - {{ $json.end_time }} ({{ $json.duration_hours }} giờ)</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>👥 Số người:</b></td><td style=\"padding:8px 12px\">{{ $json.attendees }} người</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>📝 Mục đích:</b></td><td style=\"padding:8px 12px\">{{ $json.purpose }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>🎯 Ưu tiên:</b></td><td style=\"padding:8px 12px\"><span style=\"background:{{ $json.priority === 'urgent' ? '#fef3c7' : '#e0f2fe' }};padding:2px 8px;border-radius:12px;font-size:12px\">{{ $json.priority === 'urgent' ? '🔴 Khẩn cấp' : '🔵 Bình thường' }}</span></td></tr>\n</table>\n<div style=\"background:#fef9c3;border-left:4px solid #f59e0b;padding:12px;margin:16px 0;border-radius:0 4px 4px 0\">\n<p style=\"margin:0;font-size:13px\">⏳ Thời hạn phê duyệt: <b>{{ $json.approval_deadline }}</b></p>\n</div>\n<p style=\"font-size:13px;color:#888\">Bạn sẽ nhận email thông báo khi có kết quả phê duyệt.</p>\n<hr style=\"border:0;border-top:1px solid #eee;margin:16px 0\">\n<p style=\"font-size:11px;color:#aaa;text-align:center\">Email tự động từ hệ thống ApproveHub | VKU</p>\n</div>",
+        "options": {}
+      },
+      "id": "e7c3478e-56a1-4b14-a24e-7bd79326322a",
+      "name": "Email xác nhận cho User",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -16
+      ],
+      "webhookId": "2a0227fc-eb47-4d89-a61d-845a74132f03",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.requester_email }}",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[🔴 KHẨN] Đặt phòng {{ $json.room_name }} cần phê duyệt gấp - #{{ $json.booking_id }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:620px;margin:auto;border:2px solid #dc2626;padding:24px;border-radius:8px\">\n<div style=\"background:#dc2626;color:#fff;padding:16px;border-radius:6px 6px 0 0;margin:-24px -24px 20px\">\n<h2 style=\"margin:0\">🔴 ApproveHub - Đặt phòng KHẨN CẤP</h2>\n</div>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Yêu cầu đặt phòng <b>khẩn cấp</b> của bạn đã được ghi nhận. Manager sẽ được thông báo ngay lập tức.</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0\">\n<tr><td style=\"padding:8px;color:#555\"><b>🔢 Mã Booking:</b></td><td><code>{{ $json.booking_id }}</code></td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>🏢 Phòng:</b></td><td>{{ $json.room_name }}</td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>📆 Ngày:</b></td><td>{{ $json.meeting_date }}</td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>⏰ Thời gian:</b></td><td>{{ $json.start_time }} - {{ $json.end_time }}</td></tr>\n</table>\n<div style=\"background:#fef2f2;border:1px solid #fca5a5;padding:12px;border-radius:4px\">\n<p style=\"margin:0;color:#dc2626\">⚠️ Thời hạn phê duyệt: <b>{{ $json.approval_deadline }}</b></p>\n</div>\n</div>",
+        "options": {}
+      },
+      "id": "7a3090a3-e451-46a7-8be8-05d8f4b5b920",
+      "name": "Email xác nhận Urgent cho User",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        432,
+        688
+      ],
+      "webhookId": "f8b4c1c1-8b17-4f4b-a93e-6117156c216f",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.requester_email }}",
+        "toEmail": "=quanganh.hs2005@gmail.com",
+        "subject": "=[Cần phê duyệt] {{ $json.priority === 'urgent' ? '🔴 KHẨN - ' : '' }}Đặt phòng {{ $json.room_name }} - {{ $json.requester_name }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:620px;margin:auto;border:1px solid #2563eb;padding:24px;border-radius:8px\">\n<div style=\"background:{{ $json.priority === 'urgent' ? '#dc2626' : '#2563eb' }};color:#fff;padding:16px;border-radius:6px 6px 0 0;margin:-24px -24px 20px\">\n<h2 style=\"margin:0\">📋 {{ $json.priority === 'urgent' ? '🔴 [KHẨN] ' : '' }}Yêu cầu đặt phòng cần phê duyệt</h2>\n</div>\n<p>Kính gửi <b>Quản lý</b>,</p>\n<p>Có yêu cầu đặt phòng mới cần được xem xét:</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc\">\n<tr><td style=\"padding:8px 12px;color:#555;width:150px\"><b>👤 Người đặt:</b></td><td style=\"padding:8px 12px\">{{ $json.requester_name }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>🏬 Phòng ban:</b></td><td style=\"padding:8px 12px\">{{ $json.requester_dept }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>📧 Email:</b></td><td style=\"padding:8px 12px\">{{ $json.requester_email }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>🏢 Phòng họp:</b></td><td style=\"padding:8px 12px\">{{ $json.room_name }} (sức chứa: {{ $json.room_capacity }} người)</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>📆 Ngày:</b></td><td style=\"padding:8px 12px\">{{ $json.meeting_date }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>⏰ Thời gian:</b></td><td style=\"padding:8px 12px\">{{ $json.start_time }} - {{ $json.end_time }} ({{ $json.duration_hours }} giờ)</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>👥 Số người:</b></td><td style=\"padding:8px 12px\">{{ $json.attendees }} người</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>📝 Mục đích:</b></td><td style=\"padding:8px 12px\">{{ $json.purpose }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>🔧 Thiết bị cần:</b></td><td style=\"padding:8px 12px\">{{ $json.equipment_needed || 'Không có' }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>📌 Ghi chú:</b></td><td style=\"padding:8px 12px\">{{ $json.notes || 'Không có' }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>🔢 Mã Booking:</b></td><td style=\"padding:8px 12px\"><code style=\"background:#e2e8f0;padding:2px 6px;border-radius:4px\">{{ $json.booking_id }}</code></td></tr>\n</table>\n<div style=\"background:#fef9c3;border-left:4px solid #f59e0b;padding:12px;margin:16px 0\">\n<p style=\"margin:0;font-size:13px\">⏳ Hạn phê duyệt: <b>{{ $json.approval_deadline }}</b></p>\n</div>\n<div style=\"text-align:center;margin:28px 0\">\n<a href=\"https://n8n.internalautomation.io.vn/webhook/mr-approval?booking_id={{ $json.booking_id }}&action=approve\" style=\"background-color:#16a34a;color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:15px;display:inline-block;margin-right:16px\">✅ PHÊ DUYỆT</a>\n<a href=\"https://n8n.internalautomation.io.vn/webhook/mr-approval?booking_id={{ $json.booking_id }}&action=reject\" style=\"background-color:#dc2626;color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:15px;display:inline-block\">❌ TỪ CHỐI</a>\n</div>\n<p style=\"text-align:center;font-size:12px;color:#999\">Nếu không hành động trước hạn, yêu cầu sẽ tự động hết hạn.</p>\n<hr style=\"border:0;border-top:1px solid #eee\">\n<p style=\"font-size:11px;color:#aaa;text-align:center\">Email tự động từ hệ thống ApproveHub | VKU</p>\n</div>",
+        "options": {}
+      },
+      "id": "0d5cde52-8847-4339-a658-389020b4b627",
+      "name": "Email thông báo Manager",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        688,
+        368
+      ],
+      "webhookId": "e262084b-e32d-44c9-84bb-846147eaa430",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"success\", \"message\": \"Yêu cầu đặt phòng đã được ghi nhận\", \"booking_id\": \"{{ $json.booking_id }}\" }",
+        "options": {}
+      },
+      "id": "d26ef693-2c0b-455e-9122-e4e979eeac2a",
+      "name": "Phản hồi thành công (201)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        880,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "a7ae3249-8f34-4564-97bc-0bf0660cdedd",
+      "name": "Cron: Kiểm tra Timeout (mỗi giờ)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1728,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "pending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e71103d6-fa01-4900-af73-77f5a48685ab",
+      "name": "Lấy danh sách Pending",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1536,
+        960
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst results = [];\nfor (const item of $input.all()) {\n  const deadline = new Date(item.json.approval_deadline);\n  const isExpired = deadline < now;\n  const hoursLeft = (deadline - now) / (1000 * 3600);\n  if (isExpired) {\n    results.push({ json: { ...item.json, action: 'expired' } });\n  } else if (hoursLeft <= 2) {\n    results.push({ json: { ...item.json, action: 'remind', hours_left: Math.round(hoursLeft * 10) / 10 } });\n  }\n}\nreturn results;"
+      },
+      "id": "f27351bc-3031-436f-84c4-0166945da379",
+      "name": "Lọc: Hết hạn / Sắp hết hạn",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "action-type",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "expired",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "95bfcd91-ffdf-45ff-be58-f46277c060f8",
+      "name": "Hết hạn hay Nhắc nhở?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "booking_id"
+          ],
+          "schema": [
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d9cd8df8-7497-43ba-bbc6-92c7a8572365",
+      "name": "Cập nhật Status: expired",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -928,
+        864
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "anhlq.23ite@vku.udn.vn",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[⏰ Hết hạn] Yêu cầu đặt phòng #{{ $json.booking_id }} đã hết hạn phê duyệt",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #94a3b8;padding:24px;border-radius:8px\">\n<h2 style=\"color:#64748b\">⏰ Yêu cầu đặt phòng đã hết hạn</h2>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Yêu cầu đặt phòng <b>#{{ $json.booking_id }}</b> (Phòng {{ $json.room_name }}) đã <b>hết hạn phê duyệt</b> mà không có phản hồi từ quản lý.</p>\n<p>Vui lòng tạo yêu cầu mới hoặc liên hệ trực tiếp với quản lý.</p>\n</div>",
+        "options": {}
+      },
+      "id": "7319d795-282b-42fb-b484-ac1583c0d9cf",
+      "name": "Email Thông báo Hết hạn cho User",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        800
+      ],
+      "webhookId": "ce036920-a910-4e2e-ad64-ff9f8bb14658",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "anhlq.23ite@vku.udn.vn",
+        "toEmail": "=quanganh.hs2005@gmail.com",
+        "subject": "=[⚠️ Nhắc nhở] Còn {{ $json.hours_left }} giờ để phê duyệt booking #{{ $json.booking_id }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:2px solid #f59e0b;padding:24px;border-radius:8px\">\n<h2 style=\"color:#f59e0b\">⚠️ Nhắc nhở Phê duyệt</h2>\n<p>Kính gửi Quản lý,</p>\n<p>Yêu cầu đặt phòng <b>#{{ $json.booking_id }}</b> sắp hết hạn phê duyệt. Còn <b>{{ $json.hours_left }} giờ</b>.</p>\n<div style=\"text-align:center;margin:20px 0\">\n<a href=\"https://n8n.internalautomation.io.vn/webhook/mr-approval?booking_id={{ $json.booking_id }}&action=approve\" style=\"background:#16a34a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin-right:12px;font-weight:bold\">✅ Phê duyệt</a>\n<a href=\"https://n8n.internalautomation.io.vn/webhook/mr-approval?booking_id={{ $json.booking_id }}&action=reject\" style=\"background:#dc2626;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold\">❌ Từ chối</a>\n</div>\n</div>",
+        "options": {}
+      },
+      "id": "495f7233-7967-426e-bce7-194a7c82ce0f",
+      "name": "Email Nhắc nhở Manager",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        1184
+      ],
+      "webhookId": "e9db942e-8078-45c7-b530-72c30f2f2ca9",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "mr-approval",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b14007c0-ef72-4851-91cf-5cbcc9d66d90",
+      "name": "Webhook Phê duyệt",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        1568
+      ],
+      "webhookId": "approvehub-mr-approval"
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $input.first().json.query || {};\nconst bookingId = q.booking_id || '';\nconst action = q.action || '';\nconst managerNote = q.note || q.reason || '';\nconst validActions = ['approve', 'reject'];\nreturn [{ json: { booking_id: bookingId, action, manager_note: managerNote, valid: !!(bookingId && validActions.includes(action)), processed_at: new Date().toISOString() } }];"
+      },
+      "id": "15263887-387f-4e0b-a711-e0be06ec886b",
+      "name": "Parse Approval Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valid-approval",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "63d19275-2579-4220-b7b5-e7c05ec3f98e",
+      "name": "Approval hợp lệ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "400",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "149c3bb2-0230-4f9e-ab00-74dad8d5e07f",
+      "name": "Trang Lỗi Approval",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "booking_id",
+              "lookupValue": "={{ $json.booking_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8cc0ec72-9ea3-49e7-9ecd-27235e77cf20",
+      "name": "Lấy Chi tiết Booking",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1136,
+        1568
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const approvalData = $('Parse Approval Request').item.json;\nconst bookingData = $input.first().json;\n\nif (!bookingData || !bookingData.booking_id) {\n  return [{ json: { error: true, message: 'Booking không tồn tại' } }];\n}\n\nconst alreadyProcessed = ['approved','rejected','expired'].includes(bookingData.status);\n\nreturn [{ json: { ...bookingData, action: approvalData.action, manager_note: approvalData.manager_note, processed_at: approvalData.processed_at, already_processed: alreadyProcessed } }];"
+      },
+      "id": "690e6936-ff83-40c4-91b1-d04678dd46a9",
+      "name": "Merge Booking + Approval Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "already-check",
+              "leftValue": "={{ $json.already_processed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "00611937-880c-40be-8cd2-83e179c7b897",
+      "name": "Đã xử lý rồi?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Đã xử lý rồi",
+        "options": {}
+      },
+      "id": "10fb27d8-5bdd-4b8b-8331-892e0ac71a01",
+      "name": "Trang Đã xử lý rồi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        2032
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "action-check",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "80753ca2-0c08-4dcc-9855-7cc1a77c6902",
+      "name": "Approve hay Reject?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $input.first().json;\nreturn [{ json: { ...base, status: 'approved' } }];"
+      },
+      "id": "3ee6ea82-2936-47f5-86f9-be614f6c569d",
+      "name": "Prep Approve Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $input.first().json;\nreturn [{ json: { ...base, status: 'rejected' } }];"
+      },
+      "id": "75b9394e-4481-4b80-85dd-fe0ea34073fe",
+      "name": "Prep Reject Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1664
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "booking_id"
+          ],
+          "schema": [
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a67813e5-afba-45a3-a734-a276a3985d68",
+      "name": "Cập nhật Sheets → approved",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -128,
+        1456
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "booking_id"
+          ],
+          "schema": [
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ab58478-c8ad-42ca-9f61-e648621d8307",
+      "name": "Cập nhật Sheets → rejected",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -128,
+        1664
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "anhlq.23ite@vku.udn.vn",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[✅ Phê duyệt] Đặt phòng {{ $json.room_name }} đã được chấp thuận - #{{ $json.booking_id }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:620px;margin:auto;border:2px solid #16a34a;padding:24px;border-radius:8px\">\n<div style=\"background:#16a34a;color:#fff;padding:16px;border-radius:6px 6px 0 0;margin:-24px -24px 20px\">\n<h2 style=\"margin:0\">✅ Yêu cầu đặt phòng đã được PHÊ DUYỆT</h2>\n</div>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Tuyệt vời! Yêu cầu đặt phòng họp của bạn đã được <b style=\"color:#16a34a\">PHÊ DUYỆT</b>.</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0;background:#f0fdf4\">\n<tr><td style=\"padding:8px 12px;color:#555;width:150px\"><b>🔢 Mã Booking:</b></td><td style=\"padding:8px 12px\"><code>{{ $json.booking_id }}</code></td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>🏢 Phòng họp:</b></td><td style=\"padding:8px 12px\">{{ $json.room_name }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>📆 Ngày:</b></td><td style=\"padding:8px 12px\">{{ $json.meeting_date }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>⏰ Thời gian:</b></td><td style=\"padding:8px 12px\">{{ $json.start_time }} - {{ $json.end_time }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>👥 Số người:</b></td><td style=\"padding:8px 12px\">{{ $json.attendees }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>🔧 Thiết bị:</b></td><td style=\"padding:8px 12px\">{{ $json.equipment_needed || 'Không có' }}</td></tr>\n</table>\n{{ $json.manager_note ? '<div style=\"background:#f0fdf4;border-left:4px solid #16a34a;padding:12px;margin:12px 0\"><b>💬 Ghi chú của quản lý:</b><br>' + $json.manager_note + '</div>' : '' }}\n<div style=\"background:#e0f2fe;padding:12px;border-radius:4px;margin:12px 0\">\n<p style=\"margin:0;font-size:13px\">📍 Vui lòng có mặt đúng giờ. Nếu cần hủy, hãy liên hệ quản lý sớm nhất có thể.</p>\n</div>\n<hr style=\"border:0;border-top:1px solid #eee\">\n<p style=\"font-size:11px;color:#aaa;text-align:center\">Email tự động từ hệ thống ApproveHub | VKU</p>\n</div>",
+        "options": {}
+      },
+      "id": "ea97d20c-032f-473f-aefc-fa1d096918c4",
+      "name": "Email Phê duyệt cho User",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        80,
+        1456
+      ],
+      "webhookId": "cdfd1fa9-073c-40cd-8cc6-4adff2113070",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "anhlq.23ite@vku.udn.vn",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[❌ Từ chối] Yêu cầu đặt phòng {{ $json.room_name }} không được chấp thuận - #{{ $json.booking_id }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:620px;margin:auto;border:2px solid #dc2626;padding:24px;border-radius:8px\">\n<div style=\"background:#dc2626;color:#fff;padding:16px;border-radius:6px 6px 0 0;margin:-24px -24px 20px\">\n<h2 style=\"margin:0\">❌ Yêu cầu đặt phòng bị TỪ CHỐI</h2>\n</div>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Rất tiếc, yêu cầu đặt phòng họp của bạn đã bị <b style=\"color:#dc2626\">TỪ CHỐI</b>.</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0;background:#fef2f2\">\n<tr><td style=\"padding:8px 12px;color:#555;width:150px\"><b>🔢 Mã Booking:</b></td><td style=\"padding:8px 12px\"><code>{{ $json.booking_id }}</code></td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>🏢 Phòng họp:</b></td><td style=\"padding:8px 12px\">{{ $json.room_name }}</td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>📆 Ngày:</b></td><td style=\"padding:8px 12px\">{{ $json.meeting_date }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>⏰ Thời gian:</b></td><td style=\"padding:8px 12px\">{{ $json.start_time }} - {{ $json.end_time }}</td></tr>\n</table>\n{{ $json.manager_note ? '<div style=\"background:#fef2f2;border-left:4px solid #dc2626;padding:12px;margin:12px 0\"><b>💬 Lý do từ chối:</b><br>' + $json.manager_note + '</div>' : '' }}\n<p style=\"font-size:13px;color:#555\">Bạn có thể đặt phòng khác hoặc thay đổi khung giờ. Liên hệ quản lý nếu cần hỗ trợ thêm.</p>\n<hr style=\"border:0;border-top:1px solid #eee\">\n<p style=\"font-size:11px;color:#aaa;text-align:center\">Email tự động từ hệ thống ApproveHub | VKU</p>\n</div>",
+        "options": {}
+      },
+      "id": "66af76ba-80a5-4a13-9ab4-00965ebdf8c4",
+      "name": "Email Từ chối cho User",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        80,
+        1664
+      ],
+      "webhookId": "7845594c-726c-428f-9d35-277839abaf0e",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Đã phê duyệt thành công",
+        "options": {}
+      },
+      "id": "436fb979-5644-4410-bacc-4476f19b34d2",
+      "name": "Trang Phê duyệt OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        480,
+        1424
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Từ chối phê duyệt",
+        "options": {}
+      },
+      "id": "003ac8d4-18b4-42cd-95e2-22946f02c205",
+      "name": "Trang Từ chối OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        320,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "c3f168d2-141a-4f02-8917-760490d3a73e",
+      "name": "Cron: Nhắc họp trước 30 phút",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1728,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "approved"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "037066e2-e64c-42b8-89c6-e1238af02363",
+      "name": "Lấy Booking đã duyệt hôm nay",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1536,
+        2160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst todayStr = now.toISOString().split('T')[0];\nconst results = [];\n\nfor (const item of $input.all()) {\n  if (item.json.meeting_date !== todayStr) continue;\n  const [h, m] = (item.json.start_time || '00:00').split(':').map(Number);\n  const meetingTime = new Date(now);\n  meetingTime.setHours(h, m, 0, 0);\n  const diffMins = (meetingTime - now) / 60000;\n  if (diffMins >= 25 && diffMins <= 35) {\n    results.push({ json: { ...item.json, minutes_until_meeting: Math.round(diffMins) } });\n  }\n}\nreturn results;"
+      },
+      "id": "6935a139-53f3-40a4-8e68-e8bb1d9665f7",
+      "name": "Lọc cuộc họp trong 30 phút",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "anhlq.23ite@vku.udn.vn",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[⏰ Nhắc nhở] Cuộc họp tại {{ $json.room_name }} bắt đầu sau 30 phút",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #2563eb;padding:24px;border-radius:8px\">\n<h2 style=\"color:#2563eb\">⏰ Nhắc nhở: Cuộc họp sắp bắt đầu!</h2>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Cuộc họp của bạn sẽ bắt đầu sau khoảng <b>30 phút</b>.</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0;background:#eff6ff\">\n<tr><td style=\"padding:8px 12px;color:#555\"><b>🏢 Phòng:</b></td><td style=\"padding:8px 12px\">{{ $json.room_name }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>⏰ Giờ bắt đầu:</b></td><td style=\"padding:8px 12px\"><b style=\"color:#2563eb\">{{ $json.start_time }}</b></td></tr>\n<tr><td style=\"padding:8px 12px;color:#555\"><b>📝 Mục đích:</b></td><td style=\"padding:8px 12px\">{{ $json.purpose }}</td></tr>\n<tr style=\"background:#fff\"><td style=\"padding:8px 12px;color:#555\"><b>👥 Số người:</b></td><td style=\"padding:8px 12px\">{{ $json.attendees }}</td></tr>\n</table>\n<p style=\"font-size:13px;color:#555\">Vui lòng đến phòng họp sớm để chuẩn bị. Chúc buổi họp hiệu quả! 🎯</p>\n</div>",
+        "options": {}
+      },
+      "id": "0ddaecb1-61f2-4f97-b520-af3a3d0667ac",
+      "name": "Email Nhắc trước 30 phút",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        2160
+      ],
+      "webhookId": "33d09de6-fac0-481b-9d7c-c8d1e5a96f5e",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "huy-dat-phong",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "bf6e1622-c301-4856-b048-ac49009ccf73",
+      "name": "Webhook Hủy Booking",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        2560
+      ],
+      "webhookId": "approvehub-cancel-booking"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Thêm log để debug\nconst raw = $input.first().json;\nconst data = raw.body || raw;\n\nconsole.log('raw:', JSON.stringify(raw));\nconsole.log('data:', JSON.stringify(data));\n\nconst bookingId = data.bookingId || data.booking_id || '';\nconst requesterEmail = data.requesterEmail || data.requester_email || '';\nconst reason = data.reason || 'Không có lý do';\n\nreturn [{ json: { \n  booking_id: bookingId, \n  requester_email: requesterEmail, \n  cancel_reason: reason, \n  valid: !!(bookingId && requesterEmail),\n  cancelled_at: new Date().toISOString(),\n  _debug_raw: raw,\n  _debug_bookingId: bookingId,\n  _debug_email: requesterEmail\n}}];"
+      },
+      "id": "4f666fd1-2559-4ec8-8884-53f02caf65a5",
+      "name": "Parse Cancel Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cancel-valid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9e97c470-95f4-4322-a6c2-297c9e8a1230",
+      "name": "Cancel hợp lệ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"error\", \"message\": \"Thiếu booking_id hoặc email\" }",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "cf5785a9-3a85-4532-aeba-f362a7b050e3",
+      "name": "Lỗi Cancel không hợp lệ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        2768
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "booking_id",
+              "lookupValue": "={{ $json.booking_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a041434c-9157-487d-b53a-310b409e6181",
+      "name": "Lấy Booking để Hủy",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1136,
+        2560
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cancelData = $('Parse Cancel Request').first().json;\nconst booking = $input.first().json;\n\n// Debug — xem Sheets trả về field nào\nconsole.log('booking fields:', Object.keys(booking));\nconsole.log('requester_email từ booking:', booking.requester_email);\nconsole.log('requester_email từ cancel:', cancelData.requester_email);\n\nconst isOwner = booking.requester_email === cancelData.requester_email;\nconst canCancel = ['pending', 'pending_urgent', 'approved'].includes(booking.status);\n\nreturn [{ json: { \n  ...booking, \n  cancel_reason: cancelData.cancel_reason, \n  cancelled_at: cancelData.cancelled_at, \n  status: 'cancelled', \n  can_cancel: canCancel, \n  is_owner: isOwner,\n  _debug_isOwner: isOwner,\n  _debug_canCancel: canCancel,\n  _debug_bookingStatus: booking.status,\n  _debug_bookingEmail: booking.requester_email,\n  _debug_cancelEmail: cancelData.requester_email\n}}];"
+      },
+      "id": "4eeda52e-efce-4e88-82c5-849997621980",
+      "name": "Kiểm tra Quyền Hủy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "owner-check",
+              "leftValue": "={{ $json.is_owner }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "can-cancel-check",
+              "leftValue": "={{ $json.can_cancel }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f24f7666-4ea4-4938-ad4d-d046b0ec6f91",
+      "name": "Có thể Hủy không?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"error\", \"message\": \"Không có quyền hủy hoặc booking đã được xử lý\" }",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "id": "abbff969-55db-4384-a26f-b006cb5229ff",
+      "name": "Lỗi Không thể Hủy",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        2768
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1P7PjJTusnisb3FjDmqMay17voSc0fpkUkBw73Gp-uyA/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Trang tính1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "booking_id"
+          ],
+          "schema": [
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "de13958d-c214-4362-a048-bb5dd0b61838",
+      "name": "Cập nhật Status: cancelled",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -528,
+        2560
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7ji2ElvcG2VW2ujq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "anhlq.23ite@vku.udn.vn",
+        "toEmail": "={{ $json.requester_email }}",
+        "subject": "=[🗑️ Đã hủy] Booking #{{ $json.booking_id }} phòng {{ $json.room_name }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #94a3b8;padding:24px;border-radius:8px\">\n<h2 style=\"color:#64748b\">🗑️ Booking đã được Hủy</h2>\n<p>Xin chào <b>{{ $json.requester_name }}</b>,</p>\n<p>Booking của bạn đã được hủy thành công.</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0\">\n<tr><td style=\"padding:8px;color:#555\"><b>🔢 Mã:</b></td><td><code>{{ $json.booking_id }}</code></td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>🏢 Phòng:</b></td><td>{{ $json.room_name }}</td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>📆 Ngày:</b></td><td>{{ $json.meeting_date }}</td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>💬 Lý do hủy:</b></td><td>{{ $json.cancel_reason }}</td></tr>\n</table>\n<p style=\"font-size:13px;color:#888\">Cảm ơn bạn đã thông báo. Phòng họp đã được giải phóng cho người khác sử dụng.</p>\n</div>",
+        "options": {}
+      },
+      "id": "dec880c6-109f-493c-bf41-dec3750302b7",
+      "name": "Email Xác nhận Hủy",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        2560
+      ],
+      "webhookId": "fd5699c5-dac6-4ddb-ac17-adec76ef0a82",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "anhlq.23ite@vku.udn.vn",
+        "toEmail": "=quanganh.hs2005@gmail.com",
+        "subject": "=[ℹ️ Thông báo] Booking #{{ $json.booking_id }} đã bị hủy bởi {{ $json.requester_name }}",
+        "emailFormat": "html",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #94a3b8;padding:24px;border-radius:8px\">\n<h2 style=\"color:#64748b\">ℹ️ Thông báo Hủy Booking</h2>\n<p>Kính gửi Quản lý,</p>\n<p><b>{{ $json.requester_name }}</b> đã hủy booking phòng họp.</p>\n<table style=\"width:100%;border-collapse:collapse;margin:12px 0\">\n<tr><td style=\"padding:8px;color:#555\"><b>🔢 Mã:</b></td><td><code>{{ $json.booking_id }}</code></td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>🏢 Phòng:</b></td><td>{{ $json.room_name }}</td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>📆 Ngày:</b></td><td>{{ $json.meeting_date }} {{ $json.start_time }}-{{ $json.end_time }}</td></tr>\n<tr><td style=\"padding:8px;color:#555\"><b>💬 Lý do:</b></td><td>{{ $json.cancel_reason }}</td></tr>\n</table>\n<p style=\"font-size:13px;color:#888\">Phòng họp đã được giải phóng.</p>\n</div>",
+        "options": {}
+      },
+      "id": "2ae4c827-b442-4e58-8150-783a505fef17",
+      "name": "Email Thông báo Hủy cho Manager",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        2720
+      ],
+      "webhookId": "1cd3c288-9bf2-4bdf-b695-6b65b893656c",
+      "credentials": {
+        "smtp": {
+          "id": "uIuMSGgKqTwn2zvZ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"success\", \"message\": \"Booking đã được hủy thành công\" }",
+        "options": {}
+      },
+      "id": "a4bfaaca-48b1-4533-90a7-df4c4bf9ba23",
+      "name": "Phản hồi Hủy thành công",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Normalize & Enrich Dữ liệu').first().json;\nreturn [{ json: base }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        144
+      ],
+      "id": "627f8365-e5e6-4fd5-96bd-41e0de121cfd",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Nhận Booking": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Enrich Dữ liệu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Enrich Dữ liệu": {
+      "main": [
+        [
+          {
+            "node": "Dữ liệu hợp lệ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dữ liệu hợp lệ?": {
+      "main": [
+        [
+          {
+            "node": "Vượt sức chứa?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lỗi Validation (400)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vượt sức chứa?": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra Xung đột Lịch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lỗi Vượt sức chứa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra Xung đột Lịch": {
+      "main": [
+        [
+          {
+            "node": "Phát hiện Trùng Lịch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phát hiện Trùng Lịch": {
+      "main": [
+        [
+          {
+            "node": "Có xung đột lịch?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có xung đột lịch?": {
+      "main": [
+        [
+          {
+            "node": "Email Thông báo Xung đột",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ưu tiên Khẩn cấp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Thông báo Xung đột": {
+      "main": [
+        [
+          {
+            "node": "Phản hồi Xung đột (409)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ưu tiên Khẩn cấp?": {
+      "main": [
+        [
+          {
+            "node": "Đánh dấu Pending (Urgent)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Đánh dấu Pending (Normal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đánh dấu Pending (Normal)": {
+      "main": [
+        [
+          {
+            "node": "Lưu Google Sheets (Normal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đánh dấu Pending (Urgent)": {
+      "main": [
+        [
+          {
+            "node": "Lưu Google Sheets (Urgent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lưu Google Sheets (Normal)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lưu Google Sheets (Urgent)": {
+      "main": [
+        [
+          {
+            "node": "Email xác nhận Urgent cho User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email xác nhận cho User": {
+      "main": [
+        []
+      ]
+    },
+    "Email xác nhận Urgent cho User": {
+      "main": [
+        [
+          {
+            "node": "Email thông báo Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email thông báo Manager": {
+      "main": [
+        [
+          {
+            "node": "Phản hồi thành công (201)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron: Kiểm tra Timeout (mỗi giờ)": {
+      "main": [
+        [
+          {
+            "node": "Lấy danh sách Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy danh sách Pending": {
+      "main": [
+        [
+          {
+            "node": "Lọc: Hết hạn / Sắp hết hạn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lọc: Hết hạn / Sắp hết hạn": {
+      "main": [
+        [
+          {
+            "node": "Hết hạn hay Nhắc nhở?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hết hạn hay Nhắc nhở?": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật Status: expired",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Nhắc nhở Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cập nhật Status: expired": {
+      "main": [
+        [
+          {
+            "node": "Email Thông báo Hết hạn cho User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron: Nhắc họp trước 30 phút": {
+      "main": [
+        [
+          {
+            "node": "Lấy Booking đã duyệt hôm nay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy Booking đã duyệt hôm nay": {
+      "main": [
+        [
+          {
+            "node": "Lọc cuộc họp trong 30 phút",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lọc cuộc họp trong 30 phút": {
+      "main": [
+        [
+          {
+            "node": "Email Nhắc trước 30 phút",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Phê duyệt": {
+      "main": [
+        [
+          {
+            "node": "Parse Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Approval hợp lệ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval hợp lệ?": {
+      "main": [
+        [
+          {
+            "node": "Lấy Chi tiết Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trang Lỗi Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy Chi tiết Booking": {
+      "main": [
+        [
+          {
+            "node": "Merge Booking + Approval Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Booking + Approval Data": {
+      "main": [
+        [
+          {
+            "node": "Đã xử lý rồi?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Đã xử lý rồi?": {
+      "main": [
+        [
+          {
+            "node": "Trang Đã xử lý rồi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Approve hay Reject?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve hay Reject?": {
+      "main": [
+        [
+          {
+            "node": "Prep Approve Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Reject Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Approve Data": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật Sheets → approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Reject Data": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật Sheets → rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cập nhật Sheets → approved": {
+      "main": [
+        [
+          {
+            "node": "Email Phê duyệt cho User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cập nhật Sheets → rejected": {
+      "main": [
+        [
+          {
+            "node": "Email Từ chối cho User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Phê duyệt cho User": {
+      "main": [
+        [
+          {
+            "node": "Trang Phê duyệt OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Từ chối cho User": {
+      "main": [
+        [
+          {
+            "node": "Trang Từ chối OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Hủy Booking": {
+      "main": [
+        [
+          {
+            "node": "Parse Cancel Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cancel Request": {
+      "main": [
+        [
+          {
+            "node": "Cancel hợp lệ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel hợp lệ?": {
+      "main": [
+        [
+          {
+            "node": "Lấy Booking để Hủy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lỗi Cancel không hợp lệ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy Booking để Hủy": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra Quyền Hủy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra Quyền Hủy": {
+      "main": [
+        [
+          {
+            "node": "Có thể Hủy không?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Có thể Hủy không?": {
+      "main": [
+        [
+          {
+            "node": "Cập nhật Status: cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lỗi Không thể Hủy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cập nhật Status: cancelled": {
+      "main": [
+        [
+          {
+            "node": "Email Xác nhận Hủy",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email Thông báo Hủy cho Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Xác nhận Hủy": {
+      "main": [
+        [
+          {
+            "node": "Phản hồi Hủy thành công",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Email xác nhận cho User",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email thông báo Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "02908f13-3836-46cf-bf4e-58ea2f987551",
+  "meta": {
+    "instanceId": "a831f36a4592b7e2489dd2e8d454ce5bcf3c1e27a52a1c1c56da0af10735e74a"
+  },
+  "id": "vqg34S5ab55li9hm",
+  "tags": []
+}
