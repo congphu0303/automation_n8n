@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # ─── 1. POSTGRES (Dữ liệu của n8n) ───
+  postgres:
+    image: postgres:15
+    container_name: approval_postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8npass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - approval_network
+
+  # ─── 2. N8N ───
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: approval_n8n
+    restart: always
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=n8npass
+      - N8N_HOST=n8n.internalautomation.io.vn
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.internalautomation.io.vn/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - postgres
+    networks:
+      - approval_network
+
+  # ─── 3. FRONTEND ───
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: approval_frontend
+    restart: always
+    networks:
+      - approval_network
+
+  # ─── 4. BACKEND ───
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: approval_backend
+    env_file: ./backend/.env
+    environment:
+      - NODE_ENV=production
+    restart: always
+    networks:
+      - approval_network
+
+  # ─── 5. CADDY (Reverse Proxy + Auto SSL) ───
+  caddy:
+    image: caddy:2-alpine
+    container_name: approval_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - n8n
+    networks:
+      - approval_network
+
+volumes:
+  n8n_data:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  approval_network:
+    driver: bridge

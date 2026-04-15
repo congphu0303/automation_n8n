@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - ApproveHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body class="bg-zinc-900 font-sans min-h-screen flex items-center justify-center">
+
+  <div class="w-full max-w-md px-6">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <h1 class="text-white text-2xl font-bold tracking-tight">
+        Approve<span class="text-blue-400">Hub</span>
+      </h1>
+      <p class="text-zinc-500 text-sm mt-1">Internal Approval System</p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="bg-zinc-800 rounded-2xl p-8 shadow-xl border border-zinc-700">
+      <h2 class="text-white text-xl font-semibold mb-6">Sign In</h2>
+
+      <form id="loginForm" class="space-y-5">
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-zinc-300">Email</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+              <i class="fa-solid fa-envelope text-sm"></i>
+            </span>
+            <input type="email" id="email" name="email" required
+              placeholder="your@email.com"
+              class="w-full pl-10 pr-4 py-2.5 text-sm bg-zinc-700 border border-zinc-600 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-zinc-300">Password</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+              <i class="fa-solid fa-lock text-sm"></i>
+            </span>
+            <input type="password" id="password" name="password" required
+              placeholder="••••••••"
+              class="w-full pl-10 pr-4 py-2.5 text-sm bg-zinc-700 border border-zinc-600 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
+          </div>
+        </div>
+
+        <div id="errorMsg" class="hidden text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2">
+        </div>
+
+        <button type="submit" id="submitBtn"
+          class="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket text-xs"></i>
+          Sign In
+        </button>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-zinc-500 text-sm">
+          Do not have an account?
+          <a href="register.html" class="text-blue-400 hover:text-blue-300 font-medium">Register</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL =
+      window.location.protocol === "file:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3001/api"
+        : "/api";
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      const errorDiv = document.getElementById("errorMsg");
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Signing in...';
+      errorDiv.classList.add("hidden");
+
+      try {
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.message || "Login failed";
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+
+        // Lưu token & user info
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        // Chuyển trang: ưu tiên returnUrl (từ email link), rồi theo role
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnUrl = urlParams.get("returnUrl");
+
+        // Kiểm tra có token từ email link đang chờ xử lý không
+        const pendingApprovalToken = sessionStorage.getItem("pendingApprovalToken");
+
+        if (pendingApprovalToken) {
+          // Có token từ email → xóa pending token và quay lại approvals với token
+          sessionStorage.removeItem("pendingApprovalToken");
+          window.location.href = `approvals.html?token=${pendingApprovalToken}`;
+        } else if (returnUrl) {
+          window.location.href = returnUrl;
+        } else {
+          window.location.href = "index.html";
+        }
+      } catch (err) {
+        errorDiv.textContent = "Cannot connect to server. Is backend running?";
+        errorDiv.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket text-xs"></i> Sign In';
+      }
+    });
+  </script>
+
+</body>
+</html>

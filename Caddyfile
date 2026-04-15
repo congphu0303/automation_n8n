@@ -1,0 +1,16 @@
+# 1. FRONTEND - Nơi người dùng truy cập để xem giao diện
+approvehub.internalautomation.io.vn {
+    reverse_proxy /api/* approval_backend:3001
+    reverse_proxy /* approval_frontend:3000
+}
+
+
+# 2. BACKEND - Nơi Frontend gọi dữ liệu (API)
+api.internalautomation.io.vn {
+    reverse_proxy approval_backend:3001
+}
+
+# 3. N8N - Quản lý workflow
+n8n.internalautomation.io.vn {
+    reverse_proxy approval_n8n:5678
+}
