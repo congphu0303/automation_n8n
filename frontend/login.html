@@ -105,11 +105,17 @@
         const urlParams = new URLSearchParams(window.location.search);
         const returnUrl = urlParams.get("returnUrl");
 
-        if (returnUrl) {
+        // Kiểm tra có token từ email link đang chờ xử lý không
+        const pendingApprovalToken = sessionStorage.getItem("pendingApprovalToken");
+
+        if (pendingApprovalToken) {
+          // Có token từ email → xóa pending token và quay lại approvals với token
+          sessionStorage.removeItem("pendingApprovalToken");
+          window.location.href = `approvals.html?token=${pendingApprovalToken}`;
+        } else if (returnUrl) {
           window.location.href = returnUrl;
         } else {
-          const role = data.user.role;
-          window.location.href = role === "hr" ? "approvals.html" : "index.html";
+          window.location.href = "index.html";
         }
       } catch (err) {
         errorDiv.textContent = "Cannot connect to server. Is backend running?";

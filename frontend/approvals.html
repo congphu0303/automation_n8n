@@ -112,15 +112,6 @@
       }
     };
 
-    // ─── RESTORE TOKEN FROM SESSION ───
-    if (!approvalToken) {
-      const savedToken = sessionStorage.getItem("pendingApprovalToken");
-      if (savedToken) {
-        sessionStorage.removeItem("pendingApprovalToken");
-        window.location.href = `approvals.html?token=${savedToken}`;
-      }
-    }
-
     // ─── GLOBAL STATE ───
     let userRole = "";
 
@@ -138,6 +129,9 @@
 
     let currentTab = "pending";
 
+    // Lưu dữ liệu đơn khi load token (để dùng khi approve)
+    let tokenRequestData = null;
+
     async function loadTokenRequest(tkn) {
       try {
         const res = await fetch(`${API_URL}/approval/token/${tkn}`);
@@ -145,6 +139,23 @@
 
         if (!res.ok) {
           document.getElementById("tokenDetails").innerHTML = `<p class="text-red-500">${data.message}</p>`;
+          hideLoading();
+          return;
+        }
+
+        // Lưu dữ liệu để dùng khi approve
+        tokenRequestData = data;
+
+        // Kiểm tra token đã hết hạn chưa
+        if (data.tokenExpired) {
+          document.getElementById("tokenDetails").innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p class="text-red-600 font-medium"><i class="fa-solid fa-clock mr-2"></i>Link đã hết hạn</p>
+              <p class="text-red-500 text-sm mt-1">Hạn duyệt: ${data.tokenExpiresAt}</p>
+              <p class="text-red-500 text-sm mt-2">Vui lòng liên hệ nhân viên để gửi lại đơn xin nghỉ phép.</p>
+            </div>
+          `;
+          document.getElementById("tokenActions").innerHTML = "";
           hideLoading();
           return;
         }
@@ -161,6 +172,7 @@
           <p><strong>Manager Decision:</strong> ${statusBadge(data.manager_status)}</p>
           <p><strong>HR Decision:</strong> ${statusBadge(data.hr_status)}</p>
           <p><strong>Final Status:</strong> ${statusBadge(data.finalStatus)}</p>
+          ${data.tokenExpiresAt ? `<p class="text-xs text-zinc-400 mt-2"><i class="fa-solid fa-clock mr-1"></i>Link expires: ${data.tokenExpiresAt}</p>` : ""}
         `;
 
         const actionsDiv = document.getElementById("tokenActions");
@@ -198,11 +210,28 @@
         ? "https://n8n.internalautomation.io.vn/webhook/hr-decision"
         : "https://n8n.internalautomation.io.vn/webhook/manager-decision";
 
+      // Chuẩn bị payload đầy đủ cho N8n (N8n cần employeeName, employeeEmail, etc để gửi email)
+      // Quan trọng: gửi thêm requiresHrApproval để N8n biết đường đi đúng
+      const payload = {
+        token: tkn,
+        action: action,
+        // Thêm dữ liệu từ request để N8n gửi email cho nhân viên
+        employeeName: tokenRequestData?.employee_name || "",
+        employeeEmail: tokenRequestData?.employee_email || "",
+        leaveDate: tokenRequestData?.leave_date ? new Date(tokenRequestData.leave_date).toLocaleDateString("vi-VN") : "",
+        leaveDays: tokenRequestData?.leave_days || 0,
+        reason: tokenRequestData?.reason || "",
+        department: tokenRequestData?.department || "",
+        // Quan trọng: thêm requiresHrApproval để N8n phân biệt đơn ≤3 ngày và >3 ngày
+        requiresHrApproval: (tokenRequestData?.leave_days || 0) > 3,
+        hrApprovalLink: `${window.location.origin}/approvals.html?token=${tokenRequestData?.hrApprovalToken || ""}`,
+      };
+
       try {
         const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: tkn, action }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
 
@@ -236,8 +265,14 @@
     function renderList(requests) {
       const filtered = requests.filter(r => {
         if (currentTab === "pending") {
-          if (userRole === "manager") return r.manager_status === "pending" || (r.manager_status === "approved" && r.status === "pending");
-          if (userRole === "hr") return r.manager_status === "approved" && r.hr_status === "pending";
+          if (userRole === "manager") {
+            // Manager thấy: đơ của phòng mình, đang chờ mình duyệt
+            return r.manager_status === "pending";
+          }
+          if (userRole === "hr") {
+            // HR chỉ thấy: đơ đã manager duyệt + > 3 ngày + chờ HR duyệt
+            return r.manager_status === "approved" && r.hr_status === "pending" && r.leave_days > 3;
+          }
         }
         if (currentTab === "approved") return r.status === "approved";
         if (currentTab === "rejected") return r.status === "rejected";
@@ -301,11 +336,11 @@
               ${r.leave_days > 3 ? `<p class="text-xs text-red-500 font-medium"><i class="fa-solid fa-info-circle mr-1"></i>Needs HR</p>` : ""}
               ${(canApproveAsManager || canApproveAsHR) ? `
                 <div class="flex gap-2 mt-2">
-                  <button onclick="quickApprove('${activeToken}', '${activeEndpoint}', this)"
+                  <button onclick="quickApprove('${activeToken}', '${activeEndpoint}', this, ${JSON.stringify(r).replace(/'/g, "\\'")})"
                     class="px-4 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-1">
                     <i class="fa-solid fa-check"></i> Approve
                   </button>
-                  <button onclick="quickReject('${activeToken}', '${activeEndpoint}', this)"
+                  <button onclick="quickReject('${activeToken}', '${activeEndpoint}', this, ${JSON.stringify(r).replace(/'/g, "\\'")})"
                     class="px-4 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-1">
                     <i class="fa-solid fa-xmark"></i> Reject
                   </button>
@@ -316,15 +351,15 @@
       }).join("");
     }
 
-    async function quickApprove(tkn, endpoint, btn) {
-      await handleLeaveAction(tkn, endpoint, "approve", btn);
+    async function quickApprove(tkn, endpoint, btn, requestData) {
+      await handleLeaveAction(tkn, endpoint, "approve", btn, requestData);
     }
 
-    async function quickReject(tkn, endpoint, btn) {
-      await handleLeaveAction(tkn, endpoint, "reject", btn);
+    async function quickReject(tkn, endpoint, btn, requestData) {
+      await handleLeaveAction(tkn, endpoint, "reject", btn, requestData);
     }
 
-    async function handleLeaveAction(tkn, endpoint, action, btn) {
+    async function handleLeaveAction(tkn, endpoint, action, btn, requestData) {
       const row = btn.closest(".bg-white");
       const buttons = row.querySelectorAll("button");
       buttons.forEach(b => { b.disabled = true; b.classList.add("opacity-50"); });
@@ -332,11 +367,26 @@
       const badgeArea = row.querySelector(".shrink-0");
       badgeArea.innerHTML = `<p class="text-xs text-blue-500 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Processing...</p>`;
 
+      // Payload đầy đủ cho N8n
+      // Quan trọng: gửi thêm requiresHrApproval để N8n phân biệt đơn ≤3 ngày và >3 ngày
+      const payload = {
+        token: tkn,
+        action: action,
+        employeeName: requestData?.employee_name || "",
+        employeeEmail: requestData?.employee_email || "",
+        leaveDate: requestData?.leave_date ? new Date(requestData.leave_date).toLocaleDateString("vi-VN") : "",
+        leaveDays: requestData?.leave_days || 0,
+        reason: requestData?.reason || "",
+        department: requestData?.department || "",
+        requiresHrApproval: (requestData?.leave_days || 0) > 3,
+        hrApprovalLink: `https://approvehub.internalautomation.io.vn/approvals.html?token=${requestData?.hrApprovalToken || ""}`,
+      };
+
       try {
         const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: tkn, action }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
 
@@ -371,104 +421,69 @@
     // ─── INITIALIZATION ───
     hideLoading(); // CRITICAL: Hide loading immediately
 
+    // Nếu chưa đăng nhập → redirect login
     if (!token) {
       redirectToLogin();
-    } else if (approvalToken) {
-      // ── Token-based view (from email link) ──
-      const validateAndLoad = async () => {
-        try {
-          const res = await fetch(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) {
-            console.error("Auth failed:", res.status);
-            clearSession();
-            return;
-          }
-          const me = await res.json();
-          const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
-          localStorage.setItem("user", JSON.stringify(user));
-
-          if (me.role !== "manager" && me.role !== "hr") {
-            document.getElementById("listView").innerHTML = `
-              <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
-                <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
-                <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
-                <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
-              </div>`;
-            hideLoading();
-            return;
-          }
-
-          document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-          document.getElementById("userName").textContent = user.name || "Guest";
-          document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : "Manager";
-          document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
-          document.getElementById("listView").classList.add("hidden");
-
-          initSidebar({ activePage: "approvals", user });
-
-          document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            clearSession();
-          });
-
-          userRole = me.role;
-          await loadTokenRequest(approvalToken);
-        } catch (err) {
-          console.error("Token validation error:", err);
-          clearSession();
-        }
-      };
-      validateAndLoad();
-    } else {
-      // ── Normal list view ──
-      const initApprovals = async () => {
-        try {
-          const res = await fetch(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) {
-            console.error("Auth failed:", res.status);
-            clearSession();
-            return;
-          }
-          const me = await res.json();
-          const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
-          localStorage.setItem("user", JSON.stringify(user));
-
-          initSidebar({ activePage: "approvals", user });
-
-          document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            clearSession();
-          });
-
-          document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-          document.getElementById("userName").textContent = user.name || "Guest";
-          document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : "Manager";
-          document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
-
-          if (user.role !== "manager" && user.role !== "hr") {
-            document.getElementById("listView").innerHTML = `
-              <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
-                <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
-                <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
-                <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
-              </div>`;
-            hideLoading();
-            return;
-          }
-
-          userRole = user.role;
-          await loadRequests();
-        } catch (err) {
-          console.error("Init approvals error:", err);
-          clearSession();
-        }
-      };
-      initApprovals();
+      return;
     }
+
+    // ── Đã đăng nhập → Kiểm tra role và load dữ liệu ──
+    const initPage = async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          console.error("Auth failed:", res.status);
+          clearSession();
+          return;
+        }
+        const me = await res.json();
+        const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // Kiểm tra quyền truy cập
+        if (me.role !== "manager" && me.role !== "hr") {
+          document.getElementById("listView").innerHTML = `
+            <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
+              <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
+              <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
+              <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
+            </div>`;
+          hideLoading();
+          return;
+        }
+
+        document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+        document.getElementById("userName").textContent = user.name || "Guest";
+        document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : "Manager";
+        document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
+
+        initSidebar({ activePage: "approvals", user });
+
+        document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
+          e.preventDefault();
+          clearSession();
+        });
+
+        userRole = me.role;
+
+        // ── Kiểm tra: có approvalToken (từ link email) hay không? ──
+        if (approvalToken) {
+          // Có link email → hiển thị form duyệt đơn
+          document.getElementById("listView").classList.add("hidden");
+          await loadTokenRequest(approvalToken);
+        } else {
+          // Không có link email → hiển thị danh sách đơn chờ duyệt
+          document.getElementById("tokenView").classList.add("hidden");
+          await loadRequests();
+        }
+      } catch (err) {
+        console.error("Init page error:", err);
+        clearSession();
+      }
+    };
+    initPage();
   </script>
 
 </body>
