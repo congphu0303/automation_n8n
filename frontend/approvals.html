@@ -84,7 +84,12 @@
   <script src="sidebar.js"></script>
   <script>
     // ─── CONFIG ───
-    const API_URL = "https://approvehub.internalautomation.io.vn/api";
+    const API_URL =
+      window.location.protocol === "file:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3001/api"
+        : "/api";
     const urlParams = new URLSearchParams(window.location.search);
     const approvalToken = urlParams.get("token");
     const token = localStorage.getItem("token");

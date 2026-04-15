@@ -96,8 +96,12 @@
   </div>
 
   <script>
-    // ─── PRODUCTION: Sửa domain này thành domain thật của bạn ───
-    const API_URL = "https://approvehub.internalautomation.io.vn/api";
+    const API_URL =
+      window.location.protocol === "file:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3001/api"
+        : "/api";
 
     document.getElementById("registerForm").addEventListener("submit", async (e) => {
       e.preventDefault();

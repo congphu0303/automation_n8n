@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body class="bg-zinc-100 font-sans">
-
+ 
   <div class="flex h-screen overflow-hidden">
-
+ 
     <!-- Sidebar -->
     <aside class="w-60 bg-zinc-900 flex flex-col shrink-0">
       <div class="px-6 py-5 border-b border-zinc-800">
@@ -19,7 +19,6 @@
         </h1>
         <p class="text-zinc-500 text-xs mt-0.5">Internal System</p>
       </div>
-
       <nav class="flex-1 px-3 py-4 space-y-1">
         <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
           <i class="fa-solid fa-grip text-base w-5"></i> Dashboard
@@ -44,17 +43,15 @@
           <i class="fa-solid fa-user-check text-base w-5"></i> Room Approvals
         </a>
       </nav>
-
       <div class="px-3 py-4 border-t border-zinc-800">
         <a href="#" id="logoutBtn" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
           <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
         </a>
       </div>
     </aside>
-
+ 
     <!-- Main Column -->
     <div class="flex flex-col flex-1 overflow-hidden">
-
       <!-- Header -->
       <header class="h-16 bg-white border-b border-zinc-200 flex items-center px-6 gap-4 shrink-0 shadow-sm">
         <div class="flex-1"></div>
@@ -66,19 +63,19 @@
           </div>
         </div>
       </header>
-
+ 
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
         <div class="max-w-2xl mx-auto">
-
+ 
           <div class="mb-6">
             <h2 class="text-2xl font-bold text-zinc-900">Book a Meeting Room</h2>
             <p class="text-zinc-500 mt-1 text-sm">Fill in the details to request a room booking.</p>
           </div>
-
+ 
           <!-- Form Card -->
           <div class="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-
+ 
             <div class="px-8 py-5 border-b border-zinc-100 bg-zinc-50">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
@@ -90,9 +87,9 @@
                 </div>
               </div>
             </div>
-
+ 
             <form id="bookingForm" class="p-8 space-y-5">
-
+ 
               <!-- Room Selection -->
               <div class="space-y-2">
                 <label for="room_id" class="block text-sm font-medium text-zinc-700">
@@ -110,9 +107,21 @@
                     <i class="fa-solid fa-chevron-down text-xs"></i>
                   </span>
                 </div>
-                <p id="roomInfo" class="hidden text-xs text-zinc-500 pl-1"></p>
+                <!-- Room info card -->
+                <div id="roomInfoCard" class="hidden bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700">
+                  <div class="flex items-center gap-2 font-medium mb-1">
+                    <i class="fa-solid fa-circle-info text-blue-500"></i>
+                    <span id="roomInfoName"></span>
+                  </div>
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-blue-600">
+                    <span><i class="fa-solid fa-users mr-1"></i>Sức chứa: <b id="roomInfoCapacity"></b> người</span>
+                    <span><i class="fa-solid fa-layer-group mr-1"></i>Tầng <b id="roomInfoFloor"></b></span>
+                    <span><i class="fa-solid fa-building mr-1"></i><span id="roomInfoBuilding"></span></span>
+                  </div>
+                  <div id="roomInfoAmenities" class="mt-2 flex flex-wrap gap-1"></div>
+                </div>
               </div>
-
+ 
               <!-- Date + Attendees -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="space-y-2">
@@ -127,7 +136,6 @@
                       class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
                   </div>
                 </div>
-
                 <div class="space-y-2">
                   <label for="attendees" class="block text-sm font-medium text-zinc-700">
                     Number of Attendees <span class="text-red-500">*</span>
@@ -139,9 +147,12 @@
                     <input type="number" id="attendees" name="attendees" required min="1" value="1"
                       class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
                   </div>
+                  <p id="capacityWarning" class="hidden text-xs text-red-500 pl-1">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>Vượt sức chứa của phòng!
+                  </p>
                 </div>
               </div>
-
+ 
               <!-- Time -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="space-y-2">
@@ -156,7 +167,6 @@
                       class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
                   </div>
                 </div>
-
                 <div class="space-y-2">
                   <label for="end_time" class="block text-sm font-medium text-zinc-700">
                     End Time <span class="text-red-500">*</span>
@@ -170,19 +180,72 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Duration notice -->
+ 
+              <!-- Duration notice + Slots warning -->
               <div id="durationNotice" class="hidden bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
-                <i class="fa-solid fa-info-circle mr-1"></i>
+                <i class="fa-solid fa-hourglass-half mr-2"></i>
                 <span id="durationText"></span>
               </div>
-
-              <!-- Booked Slots Warning -->
               <div id="slotsWarning" class="hidden bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-sm text-yellow-700">
-                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i>
                 <span id="slotsText"></span>
               </div>
-
+ 
+              <!-- Priority -->
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-zinc-700">Priority</label>
+                <div class="grid grid-cols-3 gap-3">
+                  <label id="priorityNormal" class="flex items-center gap-2 px-4 py-3 border-2 border-blue-500 bg-blue-50 rounded-xl cursor-pointer transition-all">
+                    <input type="radio" name="priority" value="normal" checked class="accent-blue-600" />
+                    <div>
+                      <p class="text-sm font-medium text-zinc-800">🔵 Normal</p>
+                      <p class="text-xs text-zinc-500">Duyệt trong 24h</p>
+                    </div>
+                  </label>
+                  <label id="priorityHigh" class="flex items-center gap-2 px-4 py-3 border-2 border-zinc-200 bg-white rounded-xl cursor-pointer transition-all hover:border-orange-300">
+                    <input type="radio" name="priority" value="high" class="accent-orange-500" />
+                    <div>
+                      <p class="text-sm font-medium text-zinc-800">🟠 High</p>
+                      <p class="text-xs text-zinc-500">Duyệt trong 8h</p>
+                    </div>
+                  </label>
+                  <label id="priorityUrgent" class="flex items-center gap-2 px-4 py-3 border-2 border-zinc-200 bg-white rounded-xl cursor-pointer transition-all hover:border-red-300">
+                    <input type="radio" name="priority" value="urgent" class="accent-red-500" />
+                    <div>
+                      <p class="text-sm font-medium text-zinc-800">🔴 Urgent</p>
+                      <p class="text-xs text-zinc-500">Duyệt trong 2h</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+ 
+              <!-- Equipment Needed -->
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-zinc-700">
+                  Equipment Needed <span class="text-zinc-400 font-normal">(optional)</span>
+                </label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <label class="flex items-center gap-2 px-3 py-2 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 text-sm text-zinc-700">
+                    <input type="checkbox" name="equipment" value="Máy chiếu" class="accent-blue-600" /> 📽️ Máy chiếu
+                  </label>
+                  <label class="flex items-center gap-2 px-3 py-2 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 text-sm text-zinc-700">
+                    <input type="checkbox" name="equipment" value="Bảng trắng" class="accent-blue-600" /> 📋 Bảng trắng
+                  </label>
+                  <label class="flex items-center gap-2 px-3 py-2 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 text-sm text-zinc-700">
+                    <input type="checkbox" name="equipment" value="Micro" class="accent-blue-600" /> 🎤 Micro
+                  </label>
+                  <label class="flex items-center gap-2 px-3 py-2 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 text-sm text-zinc-700">
+                    <input type="checkbox" name="equipment" value="Webcam" class="accent-blue-600" /> 📷 Webcam
+                  </label>
+                  <label class="flex items-center gap-2 px-3 py-2 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 text-sm text-zinc-700">
+                    <input type="checkbox" name="equipment" value="Laptop" class="accent-blue-600" /> 💻 Laptop
+                  </label>
+                  <label class="flex items-center gap-2 px-3 py-2 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 text-sm text-zinc-700">
+                    <input type="checkbox" name="equipment" value="Loa" class="accent-blue-600" /> 🔊 Loa
+                  </label>
+                </div>
+              </div>
+ 
               <!-- Purpose -->
               <div class="space-y-2">
                 <label for="purpose" class="block text-sm font-medium text-zinc-700">
@@ -192,28 +255,26 @@
                   <span class="absolute left-3 top-3 text-zinc-400">
                     <i class="fa-solid fa-pen text-sm"></i>
                   </span>
-                  <textarea id="purpose" name="purpose" required rows="3"
-                    placeholder="e.g. Sprint Planning Q2 2024"
-                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none placeholder:text-zinc-400"></textarea>
+                  <textarea id="purpose" name="purpose" rows="3" required placeholder="e.g. Sprint Planning Q2 2024"
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"></textarea>
                 </div>
               </div>
-
+ 
               <!-- Notes -->
               <div class="space-y-2">
                 <label for="notes" class="block text-sm font-medium text-zinc-700">
-                  Additional Notes
+                  Additional Notes <span class="text-zinc-400 font-normal">(optional)</span>
                 </label>
                 <div class="relative">
                   <span class="absolute left-3 top-3 text-zinc-400">
                     <i class="fa-solid fa-note-sticky text-sm"></i>
                   </span>
-                  <textarea id="notes" name="notes" rows="2"
-                    placeholder="Any special requirements..."
-                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none placeholder:text-zinc-400"></textarea>
+                  <textarea id="notes" name="notes" rows="2" placeholder="Any special requirements..."
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"></textarea>
                 </div>
               </div>
-
-              <!-- User info (read-only) -->
+ 
+              <!-- Requester info (readonly) -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="space-y-2">
                   <label class="block text-sm font-medium text-zinc-700">Your Name</label>
@@ -221,8 +282,8 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
                       <i class="fa-solid fa-user text-sm"></i>
                     </span>
-                    <input type="text" id="requester_name" readonly
-                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-600 cursor-not-allowed" />
+                    <input type="text" id="requesterName" readonly
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-500 cursor-not-allowed" />
                   </div>
                 </div>
                 <div class="space-y-2">
@@ -231,183 +292,255 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
                       <i class="fa-solid fa-envelope text-sm"></i>
                     </span>
-                    <input type="email" id="requester_email" readonly
-                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-600 cursor-not-allowed" />
+                    <input type="text" id="requesterEmail" readonly
+                      class="w-full pl-10 pr-4 py-2.5 text-sm border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-500 cursor-not-allowed" />
                   </div>
                 </div>
               </div>
-
-              <div id="errorMsg" class="hidden text-red-400 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3"></div>
-              <div id="successMsg" class="hidden text-green-400 text-sm bg-green-50 border border-green-200 rounded-lg px-4 py-3"></div>
-
-              <div class="border-t border-zinc-100 pt-4 flex items-center justify-end gap-3">
-                <a href="rooms.html" class="px-6 py-2.5 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-xl transition-colors">Cancel</a>
+ 
+              <!-- Error / Success -->
+              <div id="errorMsg" class="hidden bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                <i class="fa-solid fa-circle-exclamation mr-2"></i><span id="errorText"></span>
+              </div>
+              <div id="successMsg" class="hidden bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700">
+                <i class="fa-solid fa-circle-check mr-2"></i><span id="successText"></span>
+              </div>
+ 
+              <!-- Actions -->
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <a href="booking-dashboard.html"
+                  class="px-5 py-2.5 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-xl transition-colors">
+                  Cancel
+                </a>
                 <button type="submit" id="submitBtn"
-                  class="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm">
+                  class="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm disabled:opacity-60">
                   <i class="fa-solid fa-paper-plane text-xs"></i> Submit Booking
                 </button>
               </div>
+ 
             </form>
           </div>
-
         </div>
       </main>
-
     </div>
   </div>
-
+ 
   <script>
-    const API_URL = window.location.protocol === "file:" ? "http://localhost:3001/api" : "/api";
-
+    const API_URL =
+      window.location.protocol === "file:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3001/api"
+        : "/api";
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!token) { window.location.href = "login.html"; }
-
-    // User badge
-    document.getElementById("avatar").textContent = user.name ? user.name.slice(0, 2).toUpperCase() : "??";
-    document.getElementById("userName").textContent = user.name || "Guest";
+    if (!token) window.location.href = "login.html";
+ 
+    // Fill user info
+    document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
+    document.getElementById("userName").textContent = user.name || "";
     document.getElementById("userRole").textContent = { employee: "Employee", manager: "Manager", hr: "HR" }[user.role] || "";
-    document.getElementById("requester_name").value = user.name || "";
-    document.getElementById("requester_email").value = user.email || "";
-
-    // Show nav for manager
+    document.getElementById("requesterName").value = user.name || "";
+    document.getElementById("requesterEmail").value = user.email || "";
+ 
     if (user.role === "manager") {
       document.getElementById("navMeetingApprovals").classList.remove("hidden");
       document.getElementById("navMeetingApprovals").classList.add("flex");
     }
-
-    // Pre-fill room_id from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const preSelectedRoom = urlParams.get("room_id");
-
+ 
+    // Set min date = today
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("meeting_date").min = today;
+ 
+    // Priority radio styling
+    document.querySelectorAll('input[name="priority"]').forEach(radio => {
+      radio.addEventListener("change", () => {
+        document.querySelectorAll('input[name="priority"]').forEach(r => {
+          const label = r.closest("label");
+          label.className = "flex items-center gap-2 px-4 py-3 border-2 border-zinc-200 bg-white rounded-xl cursor-pointer transition-all";
+        });
+        const activeLabel = radio.closest("label");
+        const colorMap = { normal: "border-blue-500 bg-blue-50", high: "border-orange-400 bg-orange-50", urgent: "border-red-500 bg-red-50" };
+        activeLabel.className = `flex items-center gap-2 px-4 py-3 border-2 ${colorMap[radio.value]} rounded-xl cursor-pointer transition-all`;
+      });
+    });
+ 
     let rooms = [];
-
+    const urlParams = new URLSearchParams(window.location.search);
+    const preSelectedRoom = urlParams.get("room");
+ 
     // Load rooms
     async function loadRooms() {
+      const select = document.getElementById("room_id");
       try {
         const res = await fetch(`${API_URL}/rooms`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          const failOption = document.createElement("option");
+          failOption.value = "";
+          failOption.textContent = "Cannot load rooms. Please check backend/API.";
+          failOption.disabled = true;
+          select.appendChild(failOption);
+          return;
+        }
         rooms = await res.json();
-        const select = document.getElementById("room_id");
-
+        if (!Array.isArray(rooms) || rooms.length === 0) {
+          const emptyOption = document.createElement("option");
+          emptyOption.value = "";
+          emptyOption.textContent = "No active rooms available";
+          emptyOption.disabled = true;
+          select.appendChild(emptyOption);
+          return;
+        }
         rooms.forEach(room => {
           const opt = document.createElement("option");
           opt.value = room._id;
-          opt.textContent = `${room.room_id} — ${room.name} (${room.capacity} people, Floor ${room.floor})`;
+          opt.textContent = `${room.name} — Tầng ${room.floor} (${room.capacity} người)`;
           opt.dataset.roomId = room.room_id;
           opt.dataset.roomName = room.name;
           select.appendChild(opt);
         });
-
         if (preSelectedRoom) {
           const match = Array.from(select.options).find(o => o.dataset.roomId === preSelectedRoom);
-          if (match) select.value = match.value;
+          if (match) {
+            select.value = match.value;
+            showRoomInfo(rooms.find(r => r._id === match.value));
+          }
         }
       } catch (err) {
         console.error("Error loading rooms:", err);
+        const failOption = document.createElement("option");
+        failOption.value = "";
+        failOption.textContent = "Cannot connect to room service";
+        failOption.disabled = true;
+        select.appendChild(failOption);
       }
     }
-
-    loadRooms();
-
+ 
+    function showRoomInfo(room) {
+      if (!room) return;
+      document.getElementById("roomInfoCard").classList.remove("hidden");
+      document.getElementById("roomInfoName").textContent = room.name;
+      document.getElementById("roomInfoCapacity").textContent = room.capacity;
+      document.getElementById("roomInfoFloor").textContent = room.floor;
+      document.getElementById("roomInfoBuilding").textContent = room.building || "";
+      const amenitiesDiv = document.getElementById("roomInfoAmenities");
+      const amenities = room.amenities || [];
+      amenitiesDiv.innerHTML = amenities.map(a =>
+        `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">${a}</span>`
+      ).join("");
+      // Update max attendees hint
+      document.getElementById("attendees").max = room.capacity;
+    }
+ 
+    // Room selection change
+    document.getElementById("room_id").addEventListener("change", function () {
+      const selected = rooms.find(r => r._id === this.value);
+      showRoomInfo(selected);
+      checkCapacity();
+      checkSlots();
+    });
+ 
+    // Capacity warning
+    function checkCapacity() {
+      const roomId = document.getElementById("room_id").value;
+      const attendees = parseInt(document.getElementById("attendees").value) || 0;
+      const room = rooms.find(r => r._id === roomId);
+      const warn = document.getElementById("capacityWarning");
+      if (room && attendees > room.capacity) {
+        warn.classList.remove("hidden");
+      } else {
+        warn.classList.add("hidden");
+      }
+    }
+    document.getElementById("attendees").addEventListener("input", checkCapacity);
+ 
     // Duration calc
     function calcDuration() {
       const start = document.getElementById("start_time").value;
       const end = document.getElementById("end_time").value;
       if (!start || !end) return;
-
       const [sh, sm] = start.split(":").map(Number);
       const [eh, em] = end.split(":").map(Number);
       const mins = (eh * 60 + em) - (sh * 60 + sm);
-      const hours = Math.floor(mins / 60);
-      const remMins = mins % 60;
-
       const notice = document.getElementById("durationNotice");
       const text = document.getElementById("durationText");
-      if (mins <= 0) {
-        notice.classList.add("hidden");
-        return;
-      }
+      if (mins <= 0) { notice.classList.add("hidden"); return; }
+      const hours = Math.floor(mins / 60);
+      const remMins = mins % 60;
       notice.classList.remove("hidden");
-      text.textContent = `Duration: ${hours}h ${remMins > 0 ? remMins + "m" : ""}`;
+      text.textContent = `Duration: ${hours > 0 ? hours + "h " : ""}${remMins > 0 ? remMins + "m" : ""}`;
     }
-
-    document.getElementById("start_time").addEventListener("change", checkSlots);
-    document.getElementById("end_time").addEventListener("change", () => { calcDuration(); checkSlots(); });
-    document.getElementById("meeting_date").addEventListener("change", checkSlots);
-
+ 
     // Check booked slots
     async function checkSlots() {
       const roomId = document.getElementById("room_id").value;
       const date = document.getElementById("meeting_date").value;
-      const start = document.getElementById("start_time").value;
-
       if (!roomId || !date) return;
-
       try {
-        const selectedRoom = rooms.find(r => r._id === roomId);
-        if (!selectedRoom) return;
-
-        const res = await fetch(`${API_URL}/rooms/${selectedRoom._id}/slots?date=${date}`, {
+        const res = await fetch(`${API_URL}/rooms/${roomId}/slots?date=${date}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         if (!res.ok) return;
-
         const data = await res.json();
         const slotsDiv = document.getElementById("slotsWarning");
         const slotsText = document.getElementById("slotsText");
-
         if (data.booked_slots && data.booked_slots.length > 0) {
           slotsDiv.classList.remove("hidden");
-          slotsText.textContent = `Already booked: ${data.booked_slots.join(", ")}`;
+          slotsText.textContent = `Đã có lịch: ${data.booked_slots.join(", ")}`;
         } else {
           slotsDiv.classList.add("hidden");
         }
-      } catch (err) {
-        console.error("Error checking slots:", err);
-      }
+      } catch (err) {}
     }
-
-    // Show room info when selected
-    document.getElementById("room_id").addEventListener("change", function () {
-      const selected = rooms.find(r => r._id === this.value);
-      const info = document.getElementById("roomInfo");
-      if (selected) {
-        info.textContent = `${selected.name} · Capacity: ${selected.capacity} · Floor ${selected.floor}`;
-        info.classList.remove("hidden");
-        checkSlots();
-      } else {
-        info.classList.add("hidden");
-      }
-    });
-
-    // Submit form
+ 
+    document.getElementById("start_time").addEventListener("change", () => { calcDuration(); checkSlots(); });
+    document.getElementById("end_time").addEventListener("change", () => { calcDuration(); checkSlots(); });
+    document.getElementById("meeting_date").addEventListener("change", checkSlots);
+ 
+    loadRooms();
+ 
+    // Submit
     document.getElementById("bookingForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = document.getElementById("submitBtn");
       const errorDiv = document.getElementById("errorMsg");
+      const errorText = document.getElementById("errorText");
       const successDiv = document.getElementById("successMsg");
-
-      // Validate time
+      const successText = document.getElementById("successText");
+ 
       const start = document.getElementById("start_time").value;
       const end = document.getElementById("end_time").value;
+ 
       if (start >= end) {
-        errorDiv.textContent = "End time must be after start time.";
+        errorText.textContent = "End time must be after start time.";
         errorDiv.classList.remove("hidden");
         return;
       }
-
+ 
+      const attendees = parseInt(document.getElementById("attendees").value);
+      const room = rooms.find(r => r._id === document.getElementById("room_id").value);
+      if (room && attendees > room.capacity) {
+        errorText.textContent = `Số người vượt sức chứa của phòng (tối đa ${room.capacity} người).`;
+        errorDiv.classList.remove("hidden");
+        return;
+      }
+ 
+      // Collect equipment
+      const equipmentChecked = Array.from(
+        document.querySelectorAll('input[name="equipment"]:checked')
+      ).map(cb => cb.value);
+ 
+      // Priority
+      const priority = document.querySelector('input[name="priority"]:checked')?.value || "normal";
+ 
       btn.disabled = true;
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Submitting...';
       errorDiv.classList.add("hidden");
       successDiv.classList.add("hidden");
-
+ 
       try {
-        const selectedRoom = rooms.find(r => r._id === document.getElementById("room_id").value);
-
         const res = await fetch(`${API_URL}/meeting-room/book`, {
           method: "POST",
           headers: {
@@ -416,41 +549,42 @@
           },
           body: JSON.stringify({
             room_id: document.getElementById("room_id").value,
-            room_name: selectedRoom ? selectedRoom.name : "",
+            room_name: room ? room.name : "",
             meeting_date: document.getElementById("meeting_date").value,
             start_time: start,
             end_time: end,
             purpose: document.getElementById("purpose").value,
-            attendees: parseInt(document.getElementById("attendees").value),
+            attendees,
             notes: document.getElementById("notes").value,
+            priority,
+            equipment_needed: equipmentChecked,
           }),
         });
-
+ 
         const data = await res.json();
-
         if (!res.ok) {
-          errorDiv.textContent = data.message || "Booking failed";
+          errorText.textContent = data.message || "Booking failed.";
           errorDiv.classList.remove("hidden");
           return;
         }
-
-        successDiv.innerHTML = `✅ Booking submitted! <strong>${data.booking_id}</strong> — waiting for manager approval.`;
+ 
+        successText.innerHTML = `Booking <strong>${data.booking_id}</strong> submitted! Waiting for manager approval.`;
         successDiv.classList.remove("hidden");
         setTimeout(() => window.location.href = "booking-dashboard.html", 2500);
       } catch (err) {
-        errorDiv.textContent = "Cannot connect to server.";
+        errorText.textContent = "Cannot connect to server.";
         errorDiv.classList.remove("hidden");
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Booking';
       }
     });
-
+ 
     document.getElementById("logoutBtn").addEventListener("click", () => {
       localStorage.clear();
       window.location.href = "login.html";
     });
   </script>
-
+ 
 </body>
 </html>
