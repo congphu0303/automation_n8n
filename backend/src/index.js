@@ -1098,6 +1098,91 @@ app.post("/api/meeting-room/sync-status", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════
+// CANCEL BOOKING
+// ═══════════════════════════════════════════
+app.post("/api/meeting-room/cancel", verifyToken, async (req, res) => {
+  try {
+    const { booking_id, reason } = req.body;
+    const user = req.user;
+
+    if (!booking_id) {
+      return res.status(400).json({ message: "booking_id is required" });
+    }
+
+    // Tìm booking trong MongoDB
+    let booking = await Booking.findOne({ booking_id });
+    
+    // Nếu không có trong MongoDB, gọi trực tiếp n8n webhook để cancel (n8n sẽ tìm trong Sheets)
+    if (!booking) {
+      console.log(`Booking ${booking_id} not in MongoDB, calling n8n cancel webhook...`);
+      
+      // Trigger n8n webhook để cancel trong Sheets
+      if (process.env.N8N_CANCEL_BOOKING_WEBHOOK) {
+        try {
+          await axios.post(process.env.N8N_CANCEL_BOOKING_WEBHOOK, {
+            booking_id,
+            requester_email: user.email,
+            reason: reason || "Không có lý do",
+          });
+          
+          return res.json({ 
+            message: "Đã gửi yêu cầu hủy booking", 
+            booking_id,
+            status: "cancelled" 
+          });
+        } catch (n8nErr) {
+          console.error("N8N cancel webhook error:", n8nErr.message);
+          return res.status(500).json({ message: "Lỗi gọi n8n webhook: " + n8nErr.message });
+        }
+      }
+      
+      return res.status(404).json({ message: "Booking not found in database" });
+    }
+
+    // Kiểm tra quyền: chỉ người tạo, HR hoặc Manager mới được hủy
+    const requesterEmail = (booking.requester_email || "").toLowerCase();
+    const userEmail = (user.email || "").toLowerCase();
+    
+    if (requesterEmail !== userEmail && user.role !== "hr" && user.role !== "manager") {
+      return res.status(403).json({ message: "Bạn không có quyền hủy booking này" });
+    }
+
+    // Kiểm tra trạng thái có cho phép cancel
+    if (["cancelled", "rejected", "expired"].includes(booking.status)) {
+      return res.status(400).json({ message: "Booking đã được xử lý trước đó" });
+    }
+
+    // Cập nhật trạng thái
+    booking.status = "cancelled";
+    booking.cancel_reason = reason || "";
+    booking.cancelled_at = new Date();
+    await booking.save();
+
+    // Gọi n8n webhook để sync với Sheets
+    if (process.env.N8N_CANCEL_BOOKING_WEBHOOK) {
+      try {
+        await axios.post(process.env.N8N_CANCEL_BOOKING_WEBHOOK, {
+          booking_id,
+          requester_email: booking.requester_email,
+          reason: reason || "Không có lý do",
+        });
+      } catch (n8nErr) {
+        console.error("Cancel n8n webhook error:", n8nErr.message);
+      }
+    }
+
+    res.json({ 
+      message: "Booking đã được hủy thành công", 
+      booking_id: booking.booking_id,
+      status: "cancelled" 
+    });
+  } catch (error) {
+    console.error("Cancel booking error:", error);
+    res.status(500).json({ message: "Error cancelling booking" });
+  }
+});
+
+// ═══════════════════════════════════════════
 // HEALTH CHECK
 // ═══════════════════════════════════════════
 app.get("/api/health", (req, res) => {
