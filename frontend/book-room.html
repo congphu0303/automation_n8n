@@ -367,7 +367,7 @@
  
     let rooms = [];
     const urlParams = new URLSearchParams(window.location.search);
-    const preSelectedRoom = urlParams.get("room");
+    const preSelectedRoom = urlParams.get("room") || urlParams.get("room_id");
  
     // Load rooms
     async function loadRooms() {

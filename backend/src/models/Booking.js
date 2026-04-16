@@ -78,6 +78,17 @@ const bookingSchema = new mongoose.Schema(
       min: 1,
     },
 
+    priority: {
+      type: String,
+      enum: ["normal", "high", "urgent"],
+      default: "normal",
+    },
+
+    equipment_needed: {
+      type: [String],
+      default: [],
+    },
+
     notes: {
       type: String,
       default: "",
@@ -85,10 +96,10 @@ const bookingSchema = new mongoose.Schema(
     },
 
     // Trạng thái phê duyệt
-    // pending | approved | rejected | cancelled
+    // pending | pending_urgent | approved | rejected | cancelled | expired
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "cancelled"],
+      enum: ["pending", "pending_urgent", "approved", "rejected", "cancelled", "expired"],
       default: "pending",
     },
 
@@ -131,7 +142,6 @@ const bookingSchema = new mongoose.Schema(
 bookingSchema.index({ requester_id: 1 });
 bookingSchema.index({ room_id: 1, meeting_date: 1 });
 bookingSchema.index({ status: 1 });
-bookingSchema.index({ managerApprovalToken: 1 });
 bookingSchema.index({ meeting_date: 1, start_time: 1, end_time: 1 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

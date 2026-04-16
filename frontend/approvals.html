@@ -212,37 +212,27 @@
       resultDiv.innerHTML = `<p class="text-sm text-blue-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing...</p>`;
 
       const endpoint = type === "hr"
-        ? "https://n8n.internalautomation.io.vn/webhook/hr-decision"
-        : "https://n8n.internalautomation.io.vn/webhook/manager-decision";
-
-      // Chuẩn bị payload đầy đủ cho N8n (N8n cần employeeName, employeeEmail, etc để gửi email)
-      // Quan trọng: gửi thêm requiresHrApproval để N8n biết đường đi đúng
-      const payload = {
-        token: tkn,
-        action: action,
-        // Thêm dữ liệu từ request để N8n gửi email cho nhân viên
-        employeeName: tokenRequestData?.employee_name || "",
-        employeeEmail: tokenRequestData?.employee_email || "",
-        leaveDate: tokenRequestData?.leave_date ? new Date(tokenRequestData.leave_date).toLocaleDateString("vi-VN") : "",
-        leaveDays: tokenRequestData?.leave_days || 0,
-        reason: tokenRequestData?.reason || "",
-        department: tokenRequestData?.department || "",
-        // Quan trọng: thêm requiresHrApproval để N8n phân biệt đơn ≤3 ngày và >3 ngày
-        requiresHrApproval: (tokenRequestData?.leave_days || 0) > 3,
-        hrApprovalLink: `${window.location.origin}/approvals.html?token=${tokenRequestData?.hrApprovalToken || ""}`,
-      };
+        ? `${API_URL}/approval/hr`
+        : `${API_URL}/approval/manager`;
 
       try {
         const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ token: tkn, action }),
         });
         const data = await res.json();
 
         if (res.ok) {
           resultDiv.innerHTML = `<p class="text-sm text-green-600 font-medium">${data.message || "Action completed"}</p>`;
-          setTimeout(() => window.close(), 2000);
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.location.reload();
+              window.close();
+            } else {
+              window.location.href = "approvals.html";
+            }
+          }, 1500);
         } else {
           resultDiv.innerHTML = `<p class="text-sm text-red-500">${data.message || "Error"}</p>`;
         }
@@ -314,8 +304,8 @@
         const canApproveAsHR = userRole === "hr" && r.manager_status === "approved" && r.hr_status === "pending" && !!r.hrApprovalToken;
         const activeToken = canApproveAsHR ? r.hrApprovalToken : r.managerApprovalToken;
         const activeEndpoint = canApproveAsHR
-          ? "https://n8n.internalautomation.io.vn/webhook/hr-decision"
-          : "https://n8n.internalautomation.io.vn/webhook/manager-decision";
+          ? `${API_URL}/approval/hr`
+          : `${API_URL}/approval/manager`;
 
         return `
         <div class="bg-white rounded-xl border border-zinc-200 shadow-sm p-6">
@@ -372,26 +362,15 @@
       const badgeArea = row.querySelector(".shrink-0");
       badgeArea.innerHTML = `<p class="text-xs text-blue-500 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Processing...</p>`;
 
-      // Payload đầy đủ cho N8n
-      // Quan trọng: gửi thêm requiresHrApproval để N8n phân biệt đơn ≤3 ngày và >3 ngày
-      const payload = {
-        token: tkn,
-        action: action,
-        employeeName: requestData?.employee_name || "",
-        employeeEmail: requestData?.employee_email || "",
-        leaveDate: requestData?.leave_date ? new Date(requestData.leave_date).toLocaleDateString("vi-VN") : "",
-        leaveDays: requestData?.leave_days || 0,
-        reason: requestData?.reason || "",
-        department: requestData?.department || "",
-        requiresHrApproval: (requestData?.leave_days || 0) > 3,
-        hrApprovalLink: `https://approvehub.internalautomation.io.vn/approvals.html?token=${requestData?.hrApprovalToken || ""}`,
-      };
+      const apiEndpoint = endpoint.includes("hr-decision")
+        ? `${API_URL}/approval/hr`
+        : `${API_URL}/approval/manager`;
 
       try {
-        const res = await fetch(endpoint, {
+        const res = await fetch(apiEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ token: tkn, action }),
         });
         const data = await res.json();
 
