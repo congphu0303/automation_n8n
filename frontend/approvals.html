@@ -84,12 +84,25 @@
   <script src="sidebar.js"></script>
   <script>
     // ─── CONFIG ───
+    // Backend URL (chỉ để đọc data)
     const API_URL =
       window.location.protocol === "file:" ||
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1"
         ? "http://localhost:3001/api"
         : "/api";
+
+    // N8N URLs (để gửi action)
+    const N8N_MANAGER_WEBHOOK =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5678/webhook/manager-decision"
+        : "https://n8n.internalautomation.io.vn/webhook/manager-decision";
+
+    const N8N_HR_WEBHOOK =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5678/webhook/hr-decision"
+        : "https://n8n.internalautomation.io.vn/webhook/hr-decision";
+
     const urlParams = new URLSearchParams(window.location.search);
     const approvalToken = urlParams.get("token");
     const token = localStorage.getItem("token");
@@ -119,6 +132,13 @@
 
     // ─── GLOBAL STATE ───
     let userRole = "";
+
+    // ─── Restore token from pendingApprovalToken if exists ───
+    const pendingToken = sessionStorage.getItem("pendingApprovalToken");
+    if (pendingToken && !token) {
+      // Clear the pending token since we'll redirect to login
+      sessionStorage.removeItem("pendingApprovalToken");
+    }
 
     // ─── DEFINE FUNCTIONS FIRST (before calling) ───
     const statusBadge = (status) => {
@@ -211,20 +231,39 @@
       resultDiv.classList.remove("hidden");
       resultDiv.innerHTML = `<p class="text-sm text-blue-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing...</p>`;
 
-      const endpoint = type === "hr"
-        ? `${API_URL}/approval/hr`
-        : `${API_URL}/approval/manager`;
+      // Gửi trực tiếp đến N8N webhook
+      const n8nWebhookUrl = type === "hr"
+        ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "http://localhost:5678/webhook/hr-decision"
+          : "https://n8n.internalautomation.io.vn/webhook/hr-decision")
+        : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "http://localhost:5678/webhook/manager-decision"
+          : "https://n8n.internalautomation.io.vn/webhook/manager-decision");
 
       try {
-        const res = await fetch(endpoint, {
+        const res = await fetch(n8nWebhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: tkn, action }),
+          body: JSON.stringify({
+            token: tkn,
+            action: action,
+            employeeName: tokenRequestData?.employee_name || "",
+            employeeEmail: tokenRequestData?.employee_email || "",
+            department: tokenRequestData?.department || "",
+            leaveDate: tokenRequestData?.leave_date || "",
+            leaveDays: tokenRequestData?.leave_days || 0,
+            reason: tokenRequestData?.reason || "",
+            requiresHrApproval: tokenRequestData?.leave_days > 3 || false,
+            hrApprovalLink: tokenRequestData?.hrApprovalLink || "",
+            hrEmail: tokenRequestData?.hrEmail || tokenRequestData?.hr_email || ""
+          }),
         });
-        const data = await res.json();
+
+        // N8N respond với JSON
+        const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
-          resultDiv.innerHTML = `<p class="text-sm text-green-600 font-medium">${data.message || "Action completed"}</p>`;
+          resultDiv.innerHTML = `<p class="text-sm text-green-600 font-medium">${data.message || "Action completed. Email notification sent."}</p>`;
           setTimeout(() => {
             if (window.opener) {
               window.opener.location.reload();
@@ -232,7 +271,7 @@
             } else {
               window.location.href = "approvals.html";
             }
-          }, 1500);
+          }, 2000);
         } else {
           resultDiv.innerHTML = `<p class="text-sm text-red-500">${data.message || "Error"}</p>`;
         }
@@ -405,7 +444,18 @@
     // ─── INITIALIZATION ───
     hideLoading(); // CRITICAL: Hide loading immediately
 
-    // Nếu chưa đăng nhập → redirect login
+    // ─── Nếu có approvalToken từ link email ───
+    if (approvalToken) {
+      if (!token) {
+        // Chưa đăng nhập → Lưu token và redirect đến login
+        sessionStorage.setItem("pendingApprovalToken", approvalToken);
+        window.location.href = "login.html?returnUrl=" + encodeURIComponent(window.location.href);
+        return;
+      }
+      // Đã đăng nhập → Tiếp tục xử lý token
+    }
+
+    // ─── Nếu không có token (chưa đăng nhập và không có link email) ───
     if (!token) {
       redirectToLogin();
       return;

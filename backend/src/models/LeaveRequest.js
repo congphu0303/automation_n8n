@@ -108,8 +108,29 @@ const leaveRequestSchema = new mongoose.Schema(
     // ─── Trạng thái cuối cùng ───
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "cancelled"],
       default: "pending",
+    },
+
+    // ─── Cancel ───
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+    cancelledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    // ─── Return Early ───
+    actualReturnDate: {
+      type: Date,
+      default: null,
+    },
+    refundDays: {
+      type: Number,
+      default: null,
     },
   },
   {

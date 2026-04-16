@@ -201,8 +201,8 @@ app.put("/api/settings/manager-emails", verifyToken, async (req, res) => {
     const value = { IT, Marketing, Finance, Sales, hrEmail };
     await Settings.findOneAndUpdate(
       { key: "manager_emails" },
-      { key: "manager_emails", value },
-      { upsert: true }
+      { $set: { value } },
+      { upsert: true, new: true }
     );
     res.json({ message: "Cập nhật thành công", value });
   } catch (error) {
@@ -316,19 +316,19 @@ const isTokenExpired = (expiresAt) => {
 // ROUTES: LEAVE REQUEST
 // ═══════════════════════════════════════════
 
-// POST /api/leave - Tạo đơ nghỉ phép
+// POST /api/leave - Tạo đơ nghỉ phép (được gọi từ N8N webhook)
 app.post("/api/leave", verifyToken, async (req, res) => {
   try {
-    const { leave_date, leave_days, reason } = req.body;
-    const user = await User.findById(req.user.userId);
+    const { leave_date, leave_days, reason, employeeName, employeeEmail, department } = req.body;
+    const userId = req.user?.userId;
 
     // Validate
     if (!leave_date || !leave_days || !reason) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Lấy email từ Settings (không hardcoded)
-    const managerEmail = await getEmailFromSettings(user.department, "manager");
+    // Lấy email từ Settings
+    const managerEmail = await getEmailFromSettings(department || req.user?.department, "manager");
     const hrEmail = await getEmailFromSettings(null, "hr");
 
     // Kiểm tra đã có manager email chưa
@@ -343,12 +343,26 @@ app.post("/api/leave", verifyToken, async (req, res) => {
     const hrApprovalToken = parseInt(leave_days) > 3 ? generateToken() : null;
     const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 ngày
 
+    // Lấy user info nếu có userId (từ N8N payload hoặc auth)
+    let employeeNameVal = employeeName;
+    let employeeEmailVal = employeeEmail;
+    let employeeIdVal = userId;
+
+    if (userId && !employeeName) {
+      const user = await User.findById(userId);
+      if (user) {
+        employeeNameVal = user.name;
+        employeeEmailVal = user.email;
+        employeeIdVal = user._id;
+      }
+    }
+
     // Tạo đơ
     const leave = new LeaveRequest({
-      employeeId: user._id,
-      employee_name: user.name,
-      employee_email: user.email,
-      department: user.department,
+      employeeId: employeeIdVal,
+      employee_name: employeeNameVal,
+      employee_email: employeeEmailVal,
+      department: department || req.user?.department,
       leave_date,
       leave_days: parseInt(leave_days),
       reason,
@@ -364,13 +378,13 @@ app.post("/api/leave", verifyToken, async (req, res) => {
     });
     await leave.save();
 
-    // Gọi N8n Webhook - gửi dữ liệu để N8n xử lý email, etc
-    const n8nPayload = {
-      event: "leave_request_created",
-      requestId: leave._id.toString(),
-      employeeName: user.name,
-      employeeEmail: user.email,
-      department: user.department,
+    // Trả về thông tin để N8N gửi email
+    res.status(201).json({
+      success: true,
+      leaveId: leave._id.toString(),
+      employeeName: leave.employee_name,
+      employeeEmail: leave.employee_email,
+      department: leave.department,
       leaveDate: leave_date,
       leaveDays: parseInt(leave_days),
       reason,
@@ -379,22 +393,8 @@ app.post("/api/leave", verifyToken, async (req, res) => {
       managerApprovalLink: buildLink(managerApprovalToken),
       hrApprovalLink: hrApprovalToken ? buildLink(hrApprovalToken) : null,
       requiresHrApproval: parseInt(leave_days) > 3,
-      managerEmail: managerEmail,
-      hrEmail: hrEmail,
-      managerEmails: {
-        IT: null,
-        Marketing: null,
-        Finance: null,
-        Sales: null
-      }
-    };
-
-    // Gọi N8n (không block response)
-    triggerN8n(process.env.N8N_LEAVE_WEBHOOK, n8nPayload);
-
-    res.status(201).json({
-      message: "Leave request submitted",
-      leave,
+      managerEmail,
+      hrEmail,
     });
   } catch (error) {
     console.error("Leave error:", error.message || error);
@@ -437,6 +437,217 @@ app.get("/api/leave/:id", verifyToken, async (req, res) => {
   }
 });
 
+// DELETE /api/leave/:id - Hủy đơn nghỉ phép (gọi từ N8N webhook)
+app.delete("/api/leave/:id", async (req, res) => {
+  try {
+    const leaveId = req.params.id;
+    const request = await LeaveRequest.findById(leaveId);
+    if (!request) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    // Nếu có auth (từ frontend), kiểm tra quyền
+    if (req.user) {
+      const user = await User.findById(req.user.userId);
+      if (request.employeeId.toString() !== req.user.userId && user.role !== "hr") {
+        return res.status(403).json({ message: "Không có quyền hủy đơn này" });
+      }
+    }
+
+    // Chỉ đơn đang pending mới được hủy
+    if (request.status !== "pending") {
+      return res.status(400).json({ message: "Chỉ đơn đang chờ duyệt mới có thể hủy" });
+    }
+
+    request.status = "cancelled";
+    request.cancelledAt = new Date();
+    request.cancelledBy = req.user?.userId;
+    await request.save();
+
+    // Trả về thông tin để N8N gửi email
+    res.json({
+      success: true,
+      message: "Đơn đã được hủy",
+      status: "cancelled",
+      leaveId: request._id.toString(),
+      employeeName: request.employee_name,
+      employeeEmail: request.employee_email,
+      leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+      leaveDays: request.leave_days,
+      reason: request.reason,
+      department: request.department,
+      managerEmail: request.manager_email,
+      hrEmail: request.hr_email,
+    });
+  } catch (error) {
+    console.error("Cancel leave error:", error);
+    res.status(500).json({ message: "Error cancelling leave" });
+  }
+});
+
+// POST /api/leave/:id/return-early - Về sớm (gọi từ N8N webhook)
+app.post("/api/leave/:id/return-early", async (req, res) => {
+  try {
+    const { actualReturnDate } = req.body;
+    const request = await LeaveRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    // Nếu có auth (từ frontend), kiểm tra quyền
+    if (req.user && request.employeeId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Không có quyền cập nhật đơn này" });
+    }
+
+    // Chỉ đơn đã duyệt mới được về sớm
+    if (request.status !== "approved") {
+      return res.status(400).json({ message: "Chỉ đơn đã duyệt mới có thể về sớm" });
+    }
+
+    // Tính số ngày hoàn lại
+    const plannedEnd = new Date(request.leave_date);
+    plannedEnd.setDate(plannedEnd.getDate() + request.leave_days - 1);
+
+    const actualReturn = new Date(actualReturnDate || new Date());
+    const diffTime = plannedEnd - actualReturn;
+    const refundDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    request.actualReturnDate = actualReturn;
+    request.refundDays = refundDays;
+    await request.save();
+
+    // Trả về thông tin để N8N gửi email
+    res.json({
+      success: true,
+      message: `Đã cập nhật ngày về. Hoàn lại ${refundDays} ngày phép.`,
+      refundDays,
+      actualReturnDate: actualReturn,
+      leaveId: request._id.toString(),
+      employeeName: request.employee_name,
+      employeeEmail: request.employee_email,
+      leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+      leaveDays: request.leave_days,
+      reason: request.reason,
+      department: request.department,
+      managerEmail: request.manager_email,
+      hrEmail: request.hr_email,
+    });
+  } catch (error) {
+    console.error("Return early error:", error);
+    res.status(500).json({ message: "Error processing return early" });
+  }
+});
+
+// PUT /api/leave/:id - Cập nhật đơn nghỉ phép (gọi từ N8N webhook)
+app.put("/api/leave/:id", async (req, res) => {
+  try {
+    const { leave_date, leave_days, reason, managerApprovalToken, hrApprovalToken } = req.body;
+    const request = await LeaveRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    // Nếu có auth (từ frontend), kiểm tra quyền
+    if (req.user && request.employeeId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Không có quyền cập nhật đơn này" });
+    }
+
+    // Chỉ đơn pending mới được sửa
+    if (request.status !== "pending" || request.manager_status !== "pending") {
+      return res.status(400).json({ message: "Chỉ đơn đang chờ duyệt mới có thể sửa" });
+    }
+
+    if (leave_date) request.leave_date = leave_date;
+    if (leave_days) {
+      request.leave_days = parseInt(leave_days);
+      // Cập nhật HR token nếu số ngày thay đổi
+      if (parseInt(leave_days) > 3 && !request.hrApprovalToken) {
+        request.hrApprovalToken = generateToken();
+        request.hrTokenExpiresAt = request.managerTokenExpiresAt;
+        request.hr_status = "pending";
+      }
+    }
+    if (reason) request.reason = reason;
+
+    await request.save();
+
+    // Trả về thông tin để N8N gửi email
+    res.json({
+      success: true,
+      message: "Đơn đã được cập nhật",
+      leaveId: request._id.toString(),
+      employeeName: request.employee_name,
+      employeeEmail: request.employee_email,
+      leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+      leaveDays: request.leave_days,
+      reason: request.reason,
+      department: request.department,
+      managerApprovalToken: request.managerApprovalToken,
+      hrApprovalToken: request.hrApprovalToken,
+      managerApprovalLink: buildLink(request.managerApprovalToken),
+      hrApprovalLink: request.hrApprovalToken ? buildLink(request.hrApprovalToken) : null,
+      requiresHrApproval: request.leave_days > 3 && request.hrApprovalToken,
+      managerEmail: request.manager_email,
+      hrEmail: request.hr_email,
+    });
+  } catch (error) {
+    console.error("Update leave error:", error);
+    res.status(500).json({ message: "Error updating leave" });
+  }
+});
+
+// POST /api/leave/send-reminder - Gửi email nhắc nhở cho manager về đơn chưa duyệt
+app.post("/api/leave/send-reminder", verifyToken, async (req, res) => {
+  try {
+    const { leaveId } = req.body;
+    
+    if (!leaveId) {
+      return res.status(400).json({ message: "leaveId is required" });
+    }
+    
+    const request = await LeaveRequest.findById(leaveId);
+    if (!request) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+    
+    // Chỉ gửi reminder cho đơn đang pending
+    if (request.status !== "pending" || request.manager_status !== "pending") {
+      return res.status(400).json({ message: "Chỉ đơn đang chờ duyệt mới có thể gửi reminder" });
+    }
+    
+    // Gọi N8n webhook để gửi email nhắc nhở
+    try {
+      const n8nPayload = {
+        event: "leave_reminder",
+        leaveId: request._id.toString(),
+        employeeName: request.employee_name,
+        employeeEmail: request.employee_email,
+        leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+        leaveDays: request.leave_days,
+        reason: request.reason,
+        department: request.department,
+        managerEmail: request.manager_email,
+        hrEmail: request.hr_email,
+        managerApprovalLink: buildLink(request.managerApprovalToken),
+      };
+      await fetch(process.env.N8N_LEAVE_WEBHOOK.replace("/leave-request", "/leave-reminder"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(n8nPayload),
+      });
+    } catch (e) {
+      console.error("N8n reminder webhook error:", e.message);
+    }
+    
+    res.json({ message: "Đã gửi email nhắc nhở", leaveId: request._id.toString() });
+  } catch (error) {
+    console.error("Send reminder error:", error);
+    res.status(500).json({ message: "Error sending reminder" });
+  }
+});
+
 // ═══════════════════════════════════════════
 // ROUTES: APPROVAL
 // ═══════════════════════════════════════════
@@ -449,10 +660,10 @@ app.post("/api/approval/webhook-callback", async (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/approval/manager - Manager duyệt
+// POST /api/approval/manager - Manager duyệt (được gọi từ N8N webhook)
 app.post("/api/approval/manager", async (req, res) => {
   try {
-    const { token, action } = req.body;
+    const { token, action, employeeName, employeeEmail, leaveDate, leaveDays, reason, department } = req.body;
 
     if (!["approve", "reject"].includes(action)) {
       return res.status(400).json({ message: "Invalid action" });
@@ -479,66 +690,37 @@ app.post("/api/approval/manager", async (req, res) => {
       request.status = "rejected";
       await request.save();
 
-      // Gọi N8n webhook để gửi email thông báo
-      try {
-        const n8nPayload = {
-          event: "manager_rejected",
-          token: token,
-          action: "reject",
-          employeeName: request.employee_name,
-          employeeEmail: request.employee_email,
-          leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
-          leaveDays: request.leave_days,
-          reason: request.reason,
-          department: request.department,
-        };
-        await fetch(process.env.N8N_LEAVE_WEBHOOK.replace("/leave-request", "/manager-decision"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(n8nPayload),
-        });
-      } catch (e) {
-        console.error("N8n webhook error:", e.message);
-      }
-
-      return res.json({ message: "Leave request rejected", status: "rejected" });
+      return res.json({
+        success: true,
+        message: "Leave request rejected",
+        status: "rejected",
+        employeeName: request.employee_name,
+        employeeEmail: request.employee_email,
+        leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+        leaveDays: request.leave_days,
+        reason: request.reason,
+        department: request.department,
+      });
     }
 
     // Manager approved
     if (request.leave_days > 3 && request.hrApprovalToken) {
-      // > 3 ngày → Cần HR duyệt thêm
       await request.save();
 
-      // Gọi N8n webhook để gửi email cho HR và employee
-      try {
-        const n8nPayload = {
-          event: "manager_approved_requires_hr",
-          token: token,
-          action: "approve",
-          employeeName: request.employee_name,
-          employeeEmail: request.employee_email,
-          leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
-          leaveDays: request.leave_days,
-          reason: request.reason,
-          department: request.department,
-          requiresHrApproval: true,
-          hrApprovalToken: request.hrApprovalToken,
-          hrApprovalLink: `${process.env.FRONTEND_URL}/approvals.html?token=${request.hrApprovalToken}`,
-        };
-        await fetch(process.env.N8N_LEAVE_WEBHOOK.replace("/leave-request", "/manager-decision"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(n8nPayload),
-        });
-      } catch (e) {
-        console.error("N8n webhook error:", e.message);
-      }
-
       return res.json({
+        success: true,
         message: "Approved by manager. Sent to HR for final approval",
         status: "pending",
         requiresHrApproval: true,
         hrApprovalToken: request.hrApprovalToken,
+        hrApprovalLink: `${process.env.FRONTEND_URL}/approvals.html?token=${request.hrApprovalToken}`,
+        employeeName: request.employee_name,
+        employeeEmail: request.employee_email,
+        leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+        leaveDays: request.leave_days,
+        reason: request.reason,
+        department: request.department,
+        hrEmail: request.hr_email,
       });
     }
 
@@ -546,37 +728,24 @@ app.post("/api/approval/manager", async (req, res) => {
     request.status = "approved";
     await request.save();
 
-    // Gọi N8n webhook để gửi email cho employee
-    try {
-      const n8nPayload = {
-        event: "manager_approved_completed",
-        token: token,
-        action: "approve",
-        employeeName: request.employee_name,
-        employeeEmail: request.employee_email,
-        leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
-        leaveDays: request.leave_days,
-        reason: request.reason,
-        department: request.department,
-        requiresHrApproval: false,
-      };
-      await fetch(process.env.N8N_LEAVE_WEBHOOK.replace("/leave-request", "/manager-decision"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(n8nPayload),
-      });
-    } catch (e) {
-      console.error("N8n webhook error:", e.message);
-    }
-
-    res.json({ message: "Leave request fully approved", status: "approved" });
+    res.json({
+      success: true,
+      message: "Leave request fully approved",
+      status: "approved",
+      employeeName: request.employee_name,
+      employeeEmail: request.employee_email,
+      leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+      leaveDays: request.leave_days,
+      reason: request.reason,
+      department: request.department,
+    });
   } catch (error) {
     console.error("Manager approval error:", error);
     res.status(500).json({ message: "Error" });
   }
 });
 
-// POST /api/approval/hr - HR duyệt
+// POST /api/approval/hr - HR duyệt (được gọi từ N8N webhook)
 app.post("/api/approval/hr", async (req, res) => {
   try {
     const { token, action } = req.body;
@@ -608,29 +777,18 @@ app.post("/api/approval/hr", async (req, res) => {
     request.status = isApprove ? "approved" : "rejected";
     await request.save();
 
-    // Gọi N8n webhook để gửi email cho employee
-    try {
-      const n8nPayload = {
-        event: action === "approve" ? "hr_approved" : "hr_rejected",
-        token: token,
-        action: action,
-        employeeName: request.employee_name,
-        employeeEmail: request.employee_email,
-        leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
-        leaveDays: request.leave_days,
-        reason: request.reason,
-        department: request.department,
-      };
-      await fetch(process.env.N8N_LEAVE_WEBHOOK.replace("/leave-request", "/hr-decision"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(n8nPayload),
-      });
-    } catch (e) {
-      console.error("N8n webhook error:", e.message);
-    }
-
-    res.json({ message: `HR ${request.status}`, status: request.status });
+    // Trả về thông tin để N8N gửi email
+    res.json({
+      success: true,
+      message: `HR ${request.status}`,
+      status: request.status,
+      employeeName: request.employee_name,
+      employeeEmail: request.employee_email,
+      leaveDate: request.leave_date ? new Date(request.leave_date).toLocaleDateString("vi-VN") : "",
+      leaveDays: request.leave_days,
+      reason: request.reason,
+      department: request.department,
+    });
   } catch (error) {
     console.error("HR approval error:", error);
     res.status(500).json({ message: "Error" });

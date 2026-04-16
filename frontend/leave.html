@@ -170,12 +170,13 @@
 
   <script src="sidebar.js"></script>
   <script>
-    const API_URL =
+    // N8N Webhook URL (thay đổi theo environment)
+    const N8N_WEBHOOK_URL =
       window.location.protocol === "file:" ||
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1"
-        ? "http://localhost:3001/api"
-        : "/api";
+        ? "http://localhost:5678/webhook/leave-request"
+        : "https://n8n.internalautomation.io.vn/webhook/leave-request";
 
     // ── Helper: clear session & redirect to login ──
     const clearSession = () => {
@@ -257,21 +258,33 @@
       successDiv.classList.add("hidden");
 
       try {
-        const res = await fetch(`${API_URL}/leave`, {
+        // Lấy user info từ localStorage
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+        const res = await fetch(N8N_WEBHOOK_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
+            // Event type để N8N phân biệt
+            event: "leave_request_created",
+            // Auth token để Backend verify
+            token: token,
+            // User info
+            employeeName: user.name || document.getElementById("employee_name").value,
+            employeeEmail: user.email || document.getElementById("employee_email").value,
+            department: user.department || document.getElementById("department").value,
+            // Leave data
             leave_date: document.getElementById("leave_date").value,
-            leave_days: document.getElementById("leave_days").value,
-            reason: document.getElementById("reason").value,
+            leave_days: parseInt(document.getElementById("leave_days").value),
+            reason: document.getElementById("reason").value
           }),
         });
 
         if (!res.ok) {
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           errorDiv.textContent = data.message || "Submit failed";
           errorDiv.classList.remove("hidden");
           btn.disabled = false;
@@ -279,11 +292,12 @@
           return;
         }
 
+        const data = await res.json().catch(() => ({}));
         successDiv.textContent = "Leave request submitted! A notification email has been sent to your manager.";
         successDiv.classList.remove("hidden");
         setTimeout(() => window.location.href = "index.html", 2000);
       } catch (err) {
-        errorDiv.textContent = "Cannot connect to server.";
+        errorDiv.textContent = "Cannot connect to server. Please check N8N webhook URL.";
         errorDiv.classList.remove("hidden");
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';

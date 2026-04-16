@@ -2,277 +2,1589 @@
   "name": "Leave Request - Full Workflow (7 Endpoints)",
   "nodes": [
     {
-      "parameters": { "httpMethod": "POST", "path": "leave-request", "options": {} },
-      "id": "wh-leave", "name": "Webhook: Leave Request", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [100, 300], "webhookId": "leave-request"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leave-request",
+        "options": {}
+      },
+      "id": "82638863-fc89-4cdb-ab2a-437ca632ab16",
+      "name": "Webhook: Leave Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        16272,
+        14048
+      ],
+      "webhookId": "leave-request"
     },
     {
-      "parameters": { "httpMethod": "POST", "path": "manager-decision", "options": {} },
-      "id": "wh-manager", "name": "Webhook: Manager Decision", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [100, 700], "webhookId": "manager-decision"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manager-decision",
+        "options": {}
+      },
+      "id": "81da1e52-044f-4f8d-956b-3f61b168c7ed",
+      "name": "Webhook: Manager Decision",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        16272,
+        14448
+      ],
+      "webhookId": "manager-decision"
     },
     {
-      "parameters": { "httpMethod": "POST", "path": "hr-decision", "options": {} },
-      "id": "wh-hr", "name": "Webhook: HR Decision", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [100, 1200], "webhookId": "hr-decision"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hr-decision",
+        "options": {}
+      },
+      "id": "fc09f4bb-a8bc-4096-a5de-e35a5307e4c3",
+      "name": "Webhook: HR Decision",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        16272,
+        14960
+      ],
+      "webhookId": "hr-decision"
     },
     {
-      "parameters": { "httpMethod": "POST", "path": "return-early", "options": {} },
-      "id": "wh-return", "name": "Webhook: Return Early", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [100, 1600], "webhookId": "return-early"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "return-early",
+        "options": {}
+      },
+      "id": "130e2346-807a-4073-90b4-39b595a065a5",
+      "name": "Webhook: Return Early",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        16272,
+        15360
+      ],
+      "webhookId": "return-early"
     },
     {
-      "parameters": { "httpMethod": "POST", "path": "cancel-leave", "options": {} },
-      "id": "wh-cancel", "name": "Webhook: Cancel Leave", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [100, 2000], "webhookId": "cancel-leave"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cancel-leave",
+        "options": {}
+      },
+      "id": "b66984cc-5f56-4a9a-bf21-5f123d0931ae",
+      "name": "Webhook: Cancel Leave",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        16272,
+        15760
+      ],
+      "webhookId": "cancel-leave"
     },
     {
-      "parameters": { "httpMethod": "POST", "path": "leave-reminder", "options": {} },
-      "id": "wh-reminder", "name": "Webhook: Leave Reminder", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [100, 2400], "webhookId": "leave-reminder"
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leave-reminder",
+        "options": {}
+      },
+      "id": "9bc78459-64b2-499d-9ad7-1539ecf131f5",
+      "name": "Webhook: Leave Reminder",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        16272,
+        16160
+      ],
+      "webhookId": "leave-reminder"
     },
     {
-      "parameters": { "httpMethod": "POST", "path": "update-leave", "options": {} },
-      "id": "wh-update", "name": "Webhook: Update Leave", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [100, 2800], "webhookId": "update-leave"
-    },
-
-    {
-      "parameters": { "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  employeeName: body.employeeName || \"Unknown\",\n  employeeEmail: body.employeeEmail || \"\",\n  leaveDate: body.leaveDate || \"\",\n  leaveDays: body.leaveDays || 0,\n  reason: body.reason || \"\",\n  department: body.department || \"\",\n  managerEmail: body.managerEmail || \"\",\n  managerApprovalLink: body.managerApprovalLink || \"\"\n} };" },
-      "id": "parse-leave", "name": "Parse Leave Request", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 300]
-    },
-    {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/leave/create", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ $json }}", "options": {} },
-      "id": "http-create", "name": "HTTP: Create Leave", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [500, 300]
-    },
-    {
-      "parameters": { "resource": "message", "subject": "=Yêu cầu nghỉ phép từ {{ $json.employeeName }}", "includeHtml": true, "htmlMessage": "=<h2>Yêu cầu nghỉ phép mới</h2><p>Nhân viên: <strong>{{ $json.employeeName }}</strong></p><p>Thời gian: {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày)</p><p>Lý do: {{ $json.reason }}</p><a href=\"{{ $json.managerApprovalLink }}\">Xem xét</a>", "toList": ["={{ $json.managerEmail }}"] },
-      "id": "email-mgr", "name": "Email: To Manager", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [700, 300], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
-    },
-    {
-      "parameters": { "options": {} },
-      "id": "resp-leave", "name": "Respond: Leave", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [900, 300]
-    },
-
-    {
-      "parameters": { "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  action: body.action || \"\",\n  employeeName: body.employeeName || \"Unknown\",\n  employeeEmail: body.employeeEmail || \"\",\n  leaveDate: body.leaveDate || \"\",\n  leaveDays: body.leaveDays || 0,\n  reason: body.reason || \"\",\n  requiresHrApproval: body.requiresHrApproval || false,\n  hrEmail: body.hrEmail || \"\",\n  hrApprovalLink: body.hrApprovalLink || \"\"\n} };" },
-      "id": "parse-mgr", "name": "Parse Manager Decision", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 700]
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "update-leave",
+        "options": {}
+      },
+      "id": "6202f137-3165-4067-8694-f8d668608898",
+      "name": "Webhook: Update Leave",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        16272,
+        16560
+      ],
+      "webhookId": "update-leave"
     },
     {
-      "parameters": { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 }, "conditions": [{ "id": "c1", "leftValue": "={{ $json.action }}", "rightValue": "reject", "operator": { "type": "string", "operation": "equals" } }] } },
-      "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [500, 600], "id": "chk-reject", "name": "Check: Reject?"
+      "parameters": {
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  leave_date: body.leave_date || body.leaveDate || \"\",\n  leave_days: parseInt(body.leave_days || body.leaveDays || 0),\n  reason: body.reason || \"\",\n  employee_email: body.employee_email || body.employeeEmail || \"\",\n  employee_name: body.employee_name || body.employeeName || \"\",\n  department: body.department || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave'\n} };"
+      },
+      "id": "5b996421-3567-44b6-a019-7f2c4f74cfad",
+      "name": "Parse Leave Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16480,
+        14048
+      ]
     },
     {
-      "parameters": { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 }, "conditions": [{ "id": "c2", "leftValue": "={{ $json.requiresHrApproval }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }] } },
-      "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [700, 700], "id": "chk-hr", "name": "Check: Needs HR?"
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "leave_date",
+              "value": "={{ $json.leave_date }}"
+            },
+            {
+              "name": "leave_days",
+              "value": "={{ $json.leave_days }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $json.reason }}"
+            },
+            {
+              "name": "employeeName",
+              "value": "={{ $json.employee_name || $json.employeeName }}"
+            },
+            {
+              "name": "employeeEmail",
+              "value": "={{ $json.employee_email || $json.employeeEmail }}"
+            },
+            {
+              "name": "department",
+              "value": "={{ $json.department }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "daa34d17-b3ea-4d7c-83fc-2ef7dd344d8d",
+      "name": "HTTP: Create Leave",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        16672,
+        14048
+      ]
     },
     {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/approval/manager", "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"token\": \"{{ $json.token }}\",\n  \"action\": \"{{ $json.action }}\"\n}", "options": {} },
-      "id": "http-mgr-reject", "name": "HTTP: Manager Reject", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [700, 500]
+      "parameters": {
+        "functionCode": "const response = item.json;\nconst data = response.body || response;\nconst input = $('Parse Leave Request').item.json;\n\nreturn { json: {\n  success: response.statusCode === 201 || response.statusCode === 200,\n  leaveId: data.leaveId || data._id || \"\",\n  status: data.status || \"pending\",\n  managerApprovalToken: data.managerApprovalToken || \"\",\n  hrApprovalToken: data.hrApprovalToken || \"\",\n  managerApprovalLink: data.managerApprovalLink || \"\",\n  hrApprovalLink: data.hrApprovalLink || \"\",\n  requiresHrApproval: data.requiresHrApproval || false,\n  // Lấy từ input request (Frontend gửi)\n  employeeName: input.employee_name || input.employeeName || \"\",\n  employeeEmail: input.employee_email || input.employeeEmail || \"\",\n  leaveDate: input.leave_date || input.leaveDate || \"\",\n  leaveDays: input.leave_days || input.leaveDays || 0,\n  reason: input.reason || \"\",\n  department: input.department || \"\",\n  // Backend trả về\n  managerEmail: data.managerEmail || data.manager_email || \"\",\n  hrEmail: data.hrEmail || data.hr_email || \"\"\n} };"
+      },
+      "id": "d601fd04-b418-4b81-9215-5d9c4326a605",
+      "name": "Parse Create Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16880,
+        14048
+      ]
     },
     {
-      "parameters": { "resource": "message", "subject": "Yêu cầu nghỉ phép bị từ chối", "includeHtml": true, "htmlMessage": "=<h2>Đơn nghỉ phép bị từ chối</h2><p>Kính gửi {{ $json.employeeName }}, đơn nghỉ phép của bạn đã bị từ chối.</p>", "toList": ["={{ $json.employeeEmail }}"] },
-      "id": "email-reject", "name": "Email: Manager Rejected", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [900, 500], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "resource": "message",
+        "subject": "=Yêu cầu nghỉ phép từ {{ $json.employeeName }}",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Yêu cầu nghỉ phép mới</h2><p>Nhân viên: <strong>{{ $json.employeeName }}</strong></p><p>Phòng ban: {{ $json.department }}</p><p>Thời gian: {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày)</p><p>Lý do: {{ $json.reason }}</p><a href=\"{{ $json.managerApprovalLink }}\">Xem xét & Phê duyệt</a>",
+        "message": "=",
+        "toList": [
+          "={{ $json.managerEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "9fd6aa3a-3118-4e32-9a2f-f809336ba1ec",
+      "name": "Email: To Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17072,
+        14048
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
     },
     {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/approval/manager", "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"token\": \"{{ $json.token }}\",\n  \"action\": \"approve\",\n  \"requiresHrApproval\": true\n}", "options": {} },
-      "id": "http-mgr-hr", "name": "HTTP: Update + HR", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [900, 700]
+      "parameters": {
+        "options": {}
+      },
+      "id": "844cbb74-e0f5-4a2b-8c09-aee5a140f826",
+      "name": "Respond: Leave",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        17280,
+        14048
+      ]
     },
     {
-      "parameters": { "resource": "message", "subject": "=Yêu cầu nghỉ phép từ {{ $json.employeeName }}", "includeHtml": true, "htmlMessage": "=<h2>Yêu cầu nghỉ phép cần HR duyệt</h2><p>Nhân viên: <strong>{{ $json.employeeName }}</strong></p><p>Thời gian: {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày)</p><a href=\"{{ $json.hrApprovalLink }}\">Phê duyệt</a>", "toList": ["={{ $json.hrEmail }}"] },
-      "id": "email-hr", "name": "Email: To HR", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [1100, 700], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  action: body.action || \"\",\n  employeeName: body.employeeName || body.employee_name || \"\",\n  employeeEmail: body.employeeEmail || body.employee_email || \"\",\n  department: body.department || \"\",\n  leaveDate: body.leaveDate || body.leave_date || \"\",\n  leaveDays: parseInt(body.leaveDays || body.leave_days || 0),\n  reason: body.reason || \"\",\n  requiresHrApproval: body.requiresHrApproval || false,\n  hrApprovalLink: body.hrApprovalLink || \"\",\n  hrEmail: body.hrEmail || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/approval/manager'\n} };"
+      },
+      "id": "ebf1745e-3d68-4a89-bb51-f8fef2191316",
+      "name": "Parse Manager Decision",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16480,
+        14448
+      ]
     },
     {
-      "parameters": { "resource": "message", "subject": "Đơn đã được Manager duyệt, chờ HR", "includeHtml": true, "htmlMessage": "=<h2>Đơn đang chờ HR duyệt</h2><p>Kính gửi {{ $json.employeeName }}, đơn nghỉ phép đã được Manager duyệt, đang chờ HR.</p>", "toList": ["={{ $json.employeeEmail }}"] },
-      "id": "email-wait-hr", "name": "Email: Waiting HR", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [1300, 700], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c88e225-bb7f-4e0e-a45f-513cbb08047b",
+      "name": "HTTP: Manager Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        16672,
+        14448
+      ]
     },
     {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/approval/manager", "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"token\": \"{{ $json.token }}\",\n  \"action\": \"approve\",\n  \"requiresHrApproval\": false\n}", "options": {} },
-      "id": "http-mgr-ok", "name": "HTTP: Manager Approve", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [900, 900]
+      "parameters": {
+        "functionCode": "const response = item.json;\nconst data = response.body || response;\nconst input = $('Parse Manager Decision').item.json;\n\nreturn { json: {\n  success: response.statusCode === 200,\n  status: data.status || \"\",\n  message: data.message || \"\",\n  leaveId: data.leaveId || \"\",\n  // Lấy từ input request (Frontend gửi)\n  action: input.action || \"\",\n  employeeName: input.employeeName || \"\",\n  employeeEmail: input.employeeEmail || \"\",\n  leaveDate: input.leaveDate || \"\",\n  leaveDays: input.leaveDays || 0,\n  reason: input.reason || \"\",\n  department: input.department || \"\",\n  requiresHrApproval: input.requiresHrApproval || false,\n  hrApprovalLink: input.hrApprovalLink || \"\",\n  hrEmail: input.hrEmail || \"\",\n  // Backend trả về\n  managerEmail: data.managerEmail || \"\"\n} };"
+      },
+      "id": "2a284d58-df89-4202-9e3a-cbea6e20954c",
+      "name": "Parse Manager Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16880,
+        14448
+      ]
     },
     {
-      "parameters": { "resource": "message", "subject": "Yêu cầu nghỉ phép đã được phê duyệt", "includeHtml": true, "htmlMessage": "=<h2>Đơn đã được phê duyệt!</h2><p>Kính gửi {{ $json.employeeName }}, đơn nghỉ phép đã được phê duyệt.</p>", "toList": ["={{ $json.employeeEmail }}"] },
-      "id": "email-approve", "name": "Email: Approved", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [1100, 900], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "rejected",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        17072,
+        14448
+      ],
+      "id": "1addac09-43cf-40e1-925d-10c9af8a0034",
+      "name": "Check: Rejected?"
     },
     {
-      "parameters": { "options": {} },
-      "id": "resp-mgr", "name": "Respond: Manager", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1500, 700]
-    },
-
-    {
-      "parameters": { "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  action: body.action || \"\",\n  employeeName: body.employeeName || \"Unknown\",\n  employeeEmail: body.employeeEmail || \"\",\n  leaveDate: body.leaveDate || \"\",\n  leaveDays: body.leaveDays || 0,\n  reason: body.reason || \"\"\n} };" },
-      "id": "parse-hr", "name": "Parse HR Decision", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 1200]
-    },
-    {
-      "parameters": { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 }, "conditions": [{ "id": "c3", "leftValue": "={{ $json.action }}", "rightValue": "approved", "operator": { "type": "string", "operation": "equals" } }] } },
-      "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [500, 1200], "id": "chk-hr-action", "name": "Check: HR Approved?"
-    },
-    {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/approval/hr", "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"token\": \"{{ $json.token }}\",\n  \"action\": \"approved\"\n}", "options": {} },
-      "id": "http-hr-approve", "name": "HTTP: HR Approve", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [700, 1100]
-    },
-    {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/approval/hr", "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"token\": \"{{ $json.token }}\",\n  \"action\": \"rejected\"\n}", "options": {} },
-      "id": "http-hr-reject", "name": "HTTP: HR Reject", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [700, 1300]
-    },
-    {
-      "parameters": { "resource": "message", "subject": "Yêu cầu nghỉ phép đã được HR phê duyệt", "includeHtml": true, "htmlMessage": "=<h2>Đơn đã được HR phê duyệt!</h2><p>Kính gửi {{ $json.employeeName }}, đơn nghỉ phép đã được HR phê duyệt cuối cùng.</p><p>Thời gian: {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày)</p>", "toList": ["={{ $json.employeeEmail }}"] },
-      "id": "email-hr-approve", "name": "Email: HR Approved", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [900, 1100], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
-    },
-    {
-      "parameters": { "resource": "message", "subject": "Yêu cầu nghỉ phép bị từ chối bởi HR", "includeHtml": true, "htmlMessage": "=<h2>Đơn bị HR từ chối</h2><p>Kính gửi {{ $json.employeeName }}, rất tiếc đơn nghỉ phép đã bị HR từ chối.</p><p>Thời gian: {{ $json.leaveDate }}</p>", "toList": ["={{ $json.employeeEmail }}"] },
-      "id": "email-hr-reject", "name": "Email: HR Rejected", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [900, 1300], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
-    },
-    {
-      "parameters": { "options": {} },
-      "id": "resp-hr", "name": "Respond: HR", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1100, 1200]
-    },
-
-    {
-      "parameters": { "functionCode": "const body = item.json.body || item.json;\nconst actual = new Date(body.actualReturnDate);\nconst planned = new Date(body.plannedEndDate);\nconst refundDays = Math.ceil((planned.getTime() - actual.getTime()) / (1000 * 3600 * 24));\nreturn { json: { ...body, refundDays } };" },
-      "id": "calc-refund", "name": "Calculate Refund", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 1600]
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.requiresHrApproval }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        17328,
+        14624
+      ],
+      "id": "dfb661cf-f26d-409b-bc1b-694780925dcf",
+      "name": "Check: Needs HR?"
     },
     {
-      "parameters": { "conditions": { "number": [{ "value1": "={{ $json.refundDays }}", "operation": "larger", "value2": 0 }] } },
-      "id": "chk-refund", "name": "Check: Refund > 0?", "type": "n8n-nodes-base.if", "typeVersion": 1, "position": [500, 1600]
+      "parameters": {
+        "resource": "message",
+        "subject": "Yêu cầu nghỉ phép bị từ chối",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Đơn nghỉ phép bị từ chối</h2><p>Kính gửi {{ $json.employeeName }},</p><p>Đơn nghỉ phép ngày {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày) đã bị <strong>Manager từ chối</strong>.</p><p>Lý do: {{ $json.reason }}</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "9706281b-63ed-4927-99d3-bc08d008e925",
+      "name": "Email: Manager Rejected",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17472,
+        14224
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
     },
     {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/approval/manager", "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"leaveId\": \"{{ $json.leaveId }}\",\n  \"refundDays\": {{ $json.refundDays }},\n  \"actualReturnDate\": \"{{ $json.actualReturnDate }}\"\n}", "options": {} },
-      "id": "http-refund", "name": "HTTP: Update & Refund", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [700, 1500]
+      "parameters": {
+        "resource": "message",
+        "subject": "=Yêu cầu nghỉ phép cần HR duyệt từ {{ $json.employeeName }}",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Đơn cần HR duyệt</h2><p>Nhân viên: <strong>{{ $json.employeeName }}</strong></p><p>Phòng ban: {{ $json.department }}</p><p>Thời gian: {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày)</p><p>Lý do: {{ $json.reason }}</p><a href=\"{{ $json.hrApprovalLink }}\">Phê duyệt tại đây</a>",
+        "message": "=",
+        "toList": [
+          "={{ $json.hrEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "41195497-f55c-49d0-8a6e-316a5ed281ce",
+      "name": "Email: To HR",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17536,
+        14480
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
     },
     {
-      "parameters": { "resource": "message", "subject": "=[Hệ thống] Hoàn {{ $json.refundDays }} ngày phép", "includeHtml": true, "htmlMessage": "=<h2>Cập nhật đi làm sớm</h2><p>Hoàn trả <strong>{{ $json.refundDays }} ngày phép</strong> cho nhân viên.</p>", "toList": ["={{ $json.hrEmail }}"] },
-      "id": "email-refund", "name": "Email: Refund", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [900, 1500], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "resource": "message",
+        "subject": "Đơn đã được Manager duyệt, chờ HR",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Đơn đang chờ HR duyệt</h2><p>Kính gửi {{ $json.employeeName }},</p><p>Đơn nghỉ phép ngày {{ $json.leaveDate }} đã được <strong>Manager duyệt</strong>, đang chờ HR phê duyệt cuối cùng.</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "21071fa5-7c52-46bb-a0fe-81362eb0f903",
+      "name": "Email: Waiting HR",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17824,
+        14480
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
     },
     {
-      "parameters": { "respondWith": "json", "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Đã hoàn trả ngày phép\"\n}" },
-      "id": "resp-refund-ok", "name": "Respond: Refund OK", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1100, 1500]
+      "parameters": {
+        "resource": "message",
+        "subject": "Yêu cầu nghỉ phép đã được phê duyệt",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Đơn đã được phê duyệt!</h2><p>Kính gửi {{ $json.employeeName }},</p><p>Đơn nghỉ phép ngày {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày) đã được <strong>Manager duyệt</strong>.</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "3a510275-e19c-4d1f-8e60-b3568c8a66d9",
+      "name": "Email: Approved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17600,
+        14720
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
     },
     {
-      "parameters": { "respondWith": "json", "responseBody": "={\n  \"status\": \"skipped\",\n  \"message\": \"Không có ngày để hoàn\"\n}" },
-      "id": "resp-refund-no", "name": "Respond: No Refund", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [700, 1700]
-    },
-
-    {
-      "parameters": { "functionCode": "const body = item.json.body || item.json;\nreturn { json: { token: body.token || \"\", employeeName: body.employeeName || \"\", employeeEmail: body.employeeEmail || \"\", leaveDate: body.leaveDate || \"\", managerEmail: body.managerEmail || \"\", hrEmail: body.hrEmail || \"\" } };" },
-      "id": "parse-cancel", "name": "Parse Cancel", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 2000]
-    },
-    {
-      "parameters": { "method": "POST", "url": "https://approvehub.internalautomation.io.vn/api/leave/cancel", "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"token\": \"{{ $json.token }}\"\n}", "options": {} },
-      "id": "http-cancel", "name": "HTTP: Cancel", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [500, 2000]
-    },
-    {
-      "parameters": { "resource": "message", "subject": "Thông báo hủy đơn nghỉ phép", "includeHtml": true, "htmlMessage": "=<h2>Hủy đơn nghỉ phép</h2><p>{{ $json.employeeName }} đã hủy đơn ngày {{ $json.leaveDate }}</p>", "toList": ["={{ $json.managerEmail }}"] },
-      "id": "email-cancel-mgr", "name": "Email: Cancel to Manager", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [700, 1950], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "options": {}
+      },
+      "id": "653b435a-2460-42a5-8b84-26faa9c0fa76",
+      "name": "Respond: Manager",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        18224,
+        14480
+      ]
     },
     {
-      "parameters": { "resource": "message", "subject": "Đơn nghỉ phép đã được hủy", "includeHtml": true, "htmlMessage": "=<h2>Xác nhận hủy đơn</h2><p>Đơn nghỉ phép ngày {{ $json.leaveDate }} đã được hủy.</p>", "toList": ["={{ $json.employeeEmail }}"] },
-      "id": "email-cancel-emp", "name": "Email: Cancel Confirm", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [700, 2050], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  action: body.action || \"\",\n  employeeName: body.employeeName || body.employee_name || \"\",\n  employeeEmail: body.employeeEmail || body.employee_email || \"\",\n  leaveDate: body.leaveDate || body.leave_date || \"\",\n  leaveDays: parseInt(body.leaveDays || body.leave_days || 0),\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/approval/hr'\n} };"
+      },
+      "id": "4fb36b4c-9fbb-47de-9d98-1179c71d1625",
+      "name": "Parse HR Decision",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16480,
+        14960
+      ]
     },
     {
-      "parameters": { "options": {} },
-      "id": "resp-cancel", "name": "Respond: Cancel", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [900, 2000]
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e55ac3d1-9880-4228-9848-09210af26161",
+      "name": "HTTP: HR Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        16672,
+        14960
+      ]
     },
-
     {
-      "parameters": { "functionCode": "const body = item.json.body || item.json;\nreturn { json: { employeeName: body.employeeName || \"\", employeeEmail: body.employeeEmail || \"\", leaveDate: body.leaveDate || \"\", managerEmail: body.managerEmail || \"\", managerApprovalLink: body.managerApprovalLink || \"\" } };" },
-      "id": "parse-reminder", "name": "Parse Reminder", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 2400]
+      "parameters": {
+        "functionCode": "const response = item.json;\nconst data = response.body || response;\nconst input = $('Parse HR Decision').item.json;\n\nreturn { json: {\n  success: response.statusCode === 200,\n  status: data.status || \"\",\n  message: data.message || \"\",\n  leaveId: data.leaveId || \"\",\n  // Lấy từ input request (Frontend gửi)\n  action: input.action || \"\",\n  employeeName: input.employeeName || \"\",\n  employeeEmail: input.employeeEmail || \"\",\n  leaveDate: input.leaveDate || \"\",\n  leaveDays: input.leaveDays || 0\n} };"
+      },
+      "id": "cd9ccb9b-1679-4241-92d7-1b467f8eaa25",
+      "name": "Parse HR Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16880,
+        14960
+      ]
     },
     {
-      "parameters": { "resource": "message", "subject": "=?Nhắc nhở: Đơn nghỉ phép chưa xử lý=", "includeHtml": true, "htmlMessage": "=<h2>Nhắc nhở phê duyệt</h2><p>Đơn của {{ $json.employeeName }} ngày {{ $json.leaveDate }} chưa được xử lý.</p><a href=\"{{ $json.managerApprovalLink }}\">Xử lý ngay</a>", "toList": ["={{ $json.managerEmail }}"] },
-      "id": "email-reminder", "name": "Email: Reminder", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [500, 2400], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        17072,
+        14960
+      ],
+      "id": "f686dde5-ec86-44cc-acf5-e0d6c861e2f0",
+      "name": "Check: HR Approved?"
     },
     {
-      "parameters": { "options": {} },
-      "id": "resp-reminder", "name": "Respond: Reminder", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [700, 2400]
+      "parameters": {
+        "resource": "message",
+        "subject": "Yêu cầu nghỉ phép đã được HR phê duyệt",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Đơn đã được HR phê duyệt!</h2><p>Kính gửi {{ $json.employeeName }},</p><p>Đơn nghỉ phép ngày {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày) đã được <strong>HR phê duyệt cuối cùng</strong>.</p><p>Bạn có thể nghỉ phép theo kế hoạch.</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "ee833f05-6244-46e5-afc0-cee4df018900",
+      "name": "Email: HR Approved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17408,
+        14896
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
     },
-
     {
-      "parameters": { "functionCode": "const body = item.json.body || item.json;\nreturn { json: { ...body } };" },
-      "id": "parse-update", "name": "Parse Update", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 2800]
+      "parameters": {
+        "resource": "message",
+        "subject": "Yêu cầu nghỉ phép bị từ chối bởi HR",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Đơn bị HR từ chối</h2><p>Kính gửi {{ $json.employeeName }},</p><p>Rất tiếc, đơn nghỉ phép ngày {{ $json.leaveDate }} đã bị <strong>HR từ chối</strong>.</p><p>Vui lòng liên hệ HR để biết thêm chi tiết.</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "09c2eb93-1453-40cf-925c-581ecf6770e8",
+      "name": "Email: HR Rejected",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17408,
+        15120
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
     },
     {
-      "parameters": { "method": "PUT", "url": "https://approvehub.internalautomation.io.vn/api/leave/update", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ $json }}", "options": {} },
-      "id": "http-update", "name": "HTTP: Update", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [500, 2800]
+      "parameters": {
+        "options": {}
+      },
+      "id": "cda5cf4d-6a6d-4b48-9faa-cda8415e1ca7",
+      "name": "Respond: HR",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        17680,
+        14960
+      ]
     },
     {
-      "parameters": { "resource": "message", "subject": "Đơn nghỉ phép đã được cập nhật", "includeHtml": true, "htmlMessage": "=<h2>Cập nhật thành công</h2><p>Đơn nghỉ phép đã được cập nhật.</p>", "toList": ["={{ $json.employeeEmail }}"] },
-      "id": "email-update", "name": "Email: Update OK", "type": "n8n-nodes-base.gmail", "typeVersion": 1, "position": [700, 2800], "credentials": { "gmailOAuth2": { "id": "gA248K2gJK6X1hxp", "name": "Gmail account" } }
+      "parameters": {
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/return-early',\n  actualReturnDate: body.actualReturnDate || new Date().toISOString(),\n  employeeName: body.employeeName || \"\",\n  employeeEmail: body.employeeEmail || \"\",\n  leaveDate: body.leaveDate || \"\",\n  leaveDays: body.leaveDays || 0,\n  reason: body.reason || \"\",\n  department: body.department || \"\",\n  managerEmail: body.managerEmail || \"\",\n  hrEmail: body.hrEmail || \"\"\n} };"
+      },
+      "id": "4c7c64f9-6183-4381-b9ad-3e8f39dffe06",
+      "name": "Parse Return Early",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16480,
+        15360
+      ]
     },
     {
-      "parameters": { "options": {} },
-      "id": "resp-update", "name": "Respond: Update", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [900, 2800]
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "leaveId",
+              "value": "={{ $json.leaveId }}"
+            },
+            {
+              "name": "actualReturnDate",
+              "value": "={{ $json.actualReturnDate }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8d875ccc-ce5a-4bac-9d5a-3d14a9d34e97",
+      "name": "HTTP: Return Early",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        16672,
+        15360
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = item.json;\nreturn { json: {\n  success: response.statusCode === 200,\n  refundDays: response.json?.refundDays || response.body?.refundDays || 0,\n  status: response.json?.status || response.body?.status || \"refunded\",\n  leaveId: response.json?.leaveId || response.body?.leaveId || \"\",\n  employeeName: response.json?.employeeName || response.body?.employeeName || \"\",\n  employeeEmail: response.json?.employeeEmail || response.body?.employeeEmail || \"\",\n  leaveDate: response.json?.leaveDate || response.body?.leaveDate || \"\",\n  leaveDays: response.json?.leaveDays || response.body?.leaveDays || 0\n} };"
+      },
+      "id": "50647336-70d3-40de-802c-5722bba61479",
+      "name": "Parse Return Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16880,
+        15360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "=[Hệ thống] Hoàn {{ $json.refundDays }} ngày phép cho {{ $json.employeeName }}",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Hoàn trả ngày phép</h2><p>Nhân viên <strong>{{ $json.employeeName }}</strong> đã trả về sớm.</p><p>Hoàn trả: <strong>{{ $json.refundDays }} ngày</strong></p><p>Ngày về thực tế: {{ $json.actualReturnDate }}</p><p>Đơn: {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày)</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.managerEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "f399b9a1-d93a-4011-80e5-5cf57089ec28",
+      "name": "Email: Refund to Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17072,
+        15360
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "Xác nhận hoàn trả ngày phép",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Đã hoàn trả ngày phép</h2><p>Bạn đã được hoàn trả <strong>{{ $json.refundDays }} ngày phép</strong> cho đơn nghỉ ngày {{ $json.leaveDate }}.</p><p>Số ngày hoàn trả sẽ được cộng vào số ngày phép còn lại.</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "ea9681cb-acd2-493f-9568-2e9a93f1b6f2",
+      "name": "Email: Refund to Employee",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17248,
+        15360
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Đã hoàn trả ngày phép\",\n  \"refundDays\": {{ $json.refundDays }}\n}",
+        "options": {}
+      },
+      "id": "f166da5a-c1e2-479b-8d00-52d873795e56",
+      "name": "Respond: Return OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        17472,
+        15360
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/cancel'\n} };"
+      },
+      "id": "1ac7d7fa-ca43-413e-9044-294ff9bc8573",
+      "name": "Parse Cancel",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16480,
+        15760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "leaveId",
+              "value": "={{ $json.leaveId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "620e1ad8-fee6-4571-a73a-201d3947cdf9",
+      "name": "HTTP: Cancel Leave",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        16672,
+        15760
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = item.json;\nreturn { json: {\n  success: response.statusCode === 200,\n  status: response.json?.status || response.body?.status || \"cancelled\",\n  message: response.json?.message || response.body?.message || \"\",\n  leaveId: response.json?.leaveId || response.body?.leaveId || \"\",\n  cancelledAt: response.json?.cancelledAt || response.body?.cancelledAt || new Date().toISOString(),\n  employeeName: response.json?.employeeName || response.body?.employeeName || \"\",\n  employeeEmail: response.json?.employeeEmail || response.body?.employeeEmail || \"\",\n  leaveDate: response.json?.leaveDate || response.body?.leaveDate || \"\",\n  leaveDays: response.json?.leaveDays || response.body?.leaveDays || 0,\n  reason: response.json?.reason || response.body?.reason || \"\",\n  department: response.json?.department || response.body?.department || \"\",\n  managerEmail: response.json?.managerEmail || response.body?.managerEmail || \"\",\n  hrEmail: response.json?.hrEmail || response.body?.hrEmail || \"\"\n} };"
+      },
+      "id": "13e90ded-e529-472f-9653-df7e4069bad1",
+      "name": "Parse Cancel Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16880,
+        15760
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "Thông báo hủy đơn nghỉ phép",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Hủy đơn nghỉ phép</h2><p>{{ $json.employeeName }} đã hủy đơn ngày {{ $json.leaveDate }}</p><p>Lý do: {{ $json.reason }}</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.managerEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "4bdfc400-17dc-4654-8e7e-a97659856bb9",
+      "name": "Email: Cancel to Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17072,
+        15760
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "Đơn nghỉ phép đã được hủy",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Xác nhận hủy đơn</h2><p>Đơn nghỉ phép ngày {{ $json.leaveDate }} đã được hủy.</p>",
+        "message": "=",
+        "toList": [
+          "={{ $json.employeeEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "12ce44fb-d078-4a61-9f11-5110acf5bfc7",
+      "name": "Email: Cancel Confirm",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17264,
+        15760
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "118251c5-2d92-46c7-94ad-c9dc560b95b9",
+      "name": "Respond: Cancel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        17456,
+        15760
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: { employeeName: body.employeeName || \"\", employeeEmail: body.employeeEmail || \"\", leaveDate: body.leaveDate || \"\", managerEmail: body.managerEmail || \"\", managerApprovalLink: body.managerApprovalLink || \"\" } };"
+      },
+      "id": "d3ee0b45-2681-4155-a8da-10e3672f6a16",
+      "name": "Parse Reminder",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16480,
+        16160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "=?Nhắc nhở: Đơn nghỉ phép chưa xử lý=",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Nhắc nhở phê duyệt</h2><p>Đơn của {{ $json.employeeName }} ngày {{ $json.leaveDate }} chưa được xử lý.</p><a href=\"{{ $json.managerApprovalLink }}\">Xử lý ngay</a>",
+        "message": "=",
+        "toList": [
+          "={{ $json.managerEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "f7a422b9-a05e-42f3-a1cc-55791149673c",
+      "name": "Email: Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        16672,
+        16160
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "70f8a018-79a5-417f-9967-929a14d3e8fd",
+      "name": "Respond: Reminder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        16880,
+        16160
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/update',\n  leave_date: body.leave_date || body.leaveDate || \"\",\n  leave_days: parseInt(body.leave_days || body.leaveDays || 0),\n  reason: body.reason || \"\"\n} };"
+      },
+      "id": "84a3d8bb-8def-4539-ac61-a880d86c8d99",
+      "name": "Parse Update",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16480,
+        16560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.backendUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "leaveId",
+              "value": "={{ $json.leaveId }}"
+            },
+            {
+              "name": "leave_date",
+              "value": "={{ $json.leave_date }}"
+            },
+            {
+              "name": "leave_days",
+              "value": "={{ $json.leave_days }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $json.reason }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "12c3d829-a631-4c40-9168-a954e834d7de",
+      "name": "HTTP: Update Leave",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        16672,
+        16560
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = item.json;\nreturn { json: {\n  success: response.statusCode === 200,\n  status: response.json?.status || response.body?.status || \"updated\",\n  message: response.json?.message || response.body?.message || \"\",\n  leaveId: response.json?.leaveId || response.body?.leaveId || \"\",\n  managerApprovalToken: response.json?.managerApprovalToken || response.body?.managerApprovalToken || \"\",\n  hrApprovalToken: response.json?.hrApprovalToken || response.body?.hrApprovalToken || \"\",\n  managerApprovalLink: response.json?.managerApprovalLink || response.body?.managerApprovalLink || \"\",\n  hrApprovalLink: response.json?.hrApprovalLink || response.body?.hrApprovalLink || null,\n  employeeName: response.json?.employeeName || response.body?.employeeName || \"\",\n  employeeEmail: response.json?.employeeEmail || response.body?.employeeEmail || \"\",\n  leaveDate: response.json?.leaveDate || response.body?.leaveDate || \"\",\n  leaveDays: response.json?.leaveDays || response.body?.leaveDays || 0\n} };"
+      },
+      "id": "55f7003c-954b-41f8-ac5d-293986593325",
+      "name": "Parse Update Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16880,
+        16560
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "subject": "Đơn nghỉ phép đã được cập nhật",
+        "includeHtml": true,
+        "htmlMessage": "=<h2>Cập nhật đơn nghỉ phép</h2><p>{{ $json.employeeName }} đã cập nhật đơn nghỉ phép.</p><p>Thời gian mới: {{ $json.leaveDate }} ({{ $json.leaveDays }} ngày)</p><a href=\"{{ $json.managerApprovalLink }}\">Xem xét lại</a>",
+        "message": "=",
+        "toList": [
+          "={{ $json.managerEmail }}"
+        ],
+        "additionalFields": {}
+      },
+      "id": "906c3e45-c04e-41ce-accf-b8b5223f4d45",
+      "name": "Email: Update Notify",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        17072,
+        16560
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gA248K2gJK6X1hxp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "0ce3d63d-b9a3-403c-8db0-f6fd8b44ff78",
+      "name": "Respond: Update",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        17280,
+        16560
+      ]
     }
   ],
-
+  "pinData": {},
   "connections": {
-    "Webhook: Leave Request": { "main": [[{ "node": "Parse Leave Request", "type": "main", "index": 0 }]] },
-    "Parse Leave Request": { "main": [[{ "node": "HTTP: Create Leave", "type": "main", "index": 0 }]] },
-    "HTTP: Create Leave": { "main": [[{ "node": "Email: To Manager", "type": "main", "index": 0 }]] },
-    "Email: To Manager": { "main": [[{ "node": "Respond: Leave", "type": "main", "index": 0 }]] },
-
-    "Webhook: Manager Decision": { "main": [[{ "node": "Parse Manager Decision", "type": "main", "index": 0 }]] },
-    "Parse Manager Decision": { "main": [[{ "node": "Check: Reject?", "type": "main", "index": 0 }]] },
-    "Check: Reject?": {
+    "Webhook: Leave Request": {
       "main": [
-        [{ "node": "HTTP: Manager Reject", "type": "main", "index": 0 }],
-        [{ "node": "Check: Needs HR?", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parse Leave Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "HTTP: Manager Reject": { "main": [[{ "node": "Email: Manager Rejected", "type": "main", "index": 0 }]] },
-    "Email: Manager Rejected": { "main": [[{ "node": "Respond: Manager", "type": "main", "index": 0 }]] },
+    "Parse Leave Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Create Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Create Leave": {
+      "main": [
+        [
+          {
+            "node": "Parse Create Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Create Response": {
+      "main": [
+        [
+          {
+            "node": "Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Respond: Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Manager Decision": {
+      "main": [
+        [
+          {
+            "node": "Parse Manager Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Manager Decision": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Manager Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Manager Decision": {
+      "main": [
+        [
+          {
+            "node": "Parse Manager Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Manager Response": {
+      "main": [
+        [
+          {
+            "node": "Check: Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Email: Manager Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check: Needs HR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Manager Rejected": {
+      "main": [
+        [
+          {
+            "node": "Respond: Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Check: Needs HR?": {
       "main": [
-        [{ "node": "HTTP: Update + HR", "type": "main", "index": 0 }],
-        [{ "node": "HTTP: Manager Approve", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Email: To HR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "HTTP: Manager Approve": { "main": [[{ "node": "Email: Approved", "type": "main", "index": 0 }]] },
-    "Email: Approved": { "main": [[{ "node": "Respond: Manager", "type": "main", "index": 0 }]] },
-    "HTTP: Update + HR": { "main": [[{ "node": "Email: To HR", "type": "main", "index": 0 }]] },
-    "Email: To HR": { "main": [[{ "node": "Email: Waiting HR", "type": "main", "index": 0 }]] },
-    "Email: Waiting HR": { "main": [[{ "node": "Respond: Manager", "type": "main", "index": 0 }]] },
-
-    "Webhook: HR Decision": { "main": [[{ "node": "Parse HR Decision", "type": "main", "index": 0 }]] },
-    "Parse HR Decision": { "main": [[{ "node": "Check: HR Approved?", "type": "main", "index": 0 }]] },
+    "Email: To HR": {
+      "main": [
+        [
+          {
+            "node": "Email: Waiting HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Waiting HR": {
+      "main": [
+        [
+          {
+            "node": "Respond: Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Respond: Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: HR Decision": {
+      "main": [
+        [
+          {
+            "node": "Parse HR Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse HR Decision": {
+      "main": [
+        [
+          {
+            "node": "HTTP: HR Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: HR Decision": {
+      "main": [
+        [
+          {
+            "node": "Parse HR Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse HR Response": {
+      "main": [
+        [
+          {
+            "node": "Check: HR Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Check: HR Approved?": {
       "main": [
-        [{ "node": "HTTP: HR Approve", "type": "main", "index": 0 }],
-        [{ "node": "HTTP: HR Reject", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Email: HR Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email: HR Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "HTTP: HR Approve": { "main": [[{ "node": "Email: HR Approved", "type": "main", "index": 0 }]] },
-    "HTTP: HR Reject": { "main": [[{ "node": "Email: HR Rejected", "type": "main", "index": 0 }]] },
-    "Email: HR Approved": { "main": [[{ "node": "Respond: HR", "type": "main", "index": 0 }]] },
-    "Email: HR Rejected": { "main": [[{ "node": "Respond: HR", "type": "main", "index": 0 }]] },
-
-    "Webhook: Return Early": { "main": [[{ "node": "Calculate Refund", "type": "main", "index": 0 }]] },
-    "Calculate Refund": { "main": [[{ "node": "Check: Refund > 0?", "type": "main", "index": 0 }]] },
-    "Check: Refund > 0?": {
+    "Email: HR Approved": {
       "main": [
-        [{ "node": "HTTP: Update & Refund", "type": "main", "index": 0 }],
-        [{ "node": "Respond: No Refund", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond: HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "HTTP: Update & Refund": { "main": [[{ "node": "Email: Refund", "type": "main", "index": 0 }]] },
-    "Email: Refund": { "main": [[{ "node": "Respond: Refund OK", "type": "main", "index": 0 }]] },
-
-    "Webhook: Cancel Leave": { "main": [[{ "node": "Parse Cancel", "type": "main", "index": 0 }]] },
-    "Parse Cancel": { "main": [[{ "node": "HTTP: Cancel", "type": "main", "index": 0 }]] },
-    "HTTP: Cancel": {
+    "Email: HR Rejected": {
       "main": [
-        [{ "node": "Email: Cancel to Manager", "type": "main", "index": 0 }],
-        [{ "node": "Email: Cancel Confirm", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond: HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Email: Cancel to Manager": { "main": [[{ "node": "Respond: Cancel", "type": "main", "index": 0 }]] },
-    "Email: Cancel Confirm": { "main": [[{ "node": "Respond: Cancel", "type": "main", "index": 0 }]] },
-
-    "Webhook: Leave Reminder": { "main": [[{ "node": "Parse Reminder", "type": "main", "index": 0 }]] },
-    "Parse Reminder": { "main": [[{ "node": "Email: Reminder", "type": "main", "index": 0 }]] },
-    "Email: Reminder": { "main": [[{ "node": "Respond: Reminder", "type": "main", "index": 0 }]] },
-
-    "Webhook: Update Leave": { "main": [[{ "node": "Parse Update", "type": "main", "index": 0 }]] },
-    "Parse Update": { "main": [[{ "node": "HTTP: Update", "type": "main", "index": 0 }]] },
-    "HTTP: Update": { "main": [[{ "node": "Email: Update OK", "type": "main", "index": 0 }]] },
-    "Email: Update OK": { "main": [[{ "node": "Respond: Update", "type": "main", "index": 0 }]] }
+    "Webhook: Return Early": {
+      "main": [
+        [
+          {
+            "node": "Parse Return Early",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Return Early": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Return Early",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Return Early": {
+      "main": [
+        [
+          {
+            "node": "Parse Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Return Response": {
+      "main": [
+        [
+          {
+            "node": "Email: Refund to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Refund to Manager": {
+      "main": [
+        [
+          {
+            "node": "Email: Refund to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Refund to Employee": {
+      "main": [
+        [
+          {
+            "node": "Respond: Return OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Cancel Leave": {
+      "main": [
+        [
+          {
+            "node": "Parse Cancel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cancel": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Cancel Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Cancel Leave": {
+      "main": [
+        [
+          {
+            "node": "Parse Cancel Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cancel Response": {
+      "main": [
+        [
+          {
+            "node": "Email: Cancel to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Cancel to Manager": {
+      "main": [
+        [
+          {
+            "node": "Email: Cancel Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Cancel Confirm": {
+      "main": [
+        [
+          {
+            "node": "Respond: Cancel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Leave Reminder": {
+      "main": [
+        [
+          {
+            "node": "Parse Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Reminder": {
+      "main": [
+        [
+          {
+            "node": "Email: Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Reminder": {
+      "main": [
+        [
+          {
+            "node": "Respond: Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Update Leave": {
+      "main": [
+        [
+          {
+            "node": "Parse Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Update": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Update Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Update Leave": {
+      "main": [
+        [
+          {
+            "node": "Parse Update Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Update Response": {
+      "main": [
+        [
+          {
+            "node": "Email: Update Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Update Notify": {
+      "main": [
+        [
+          {
+            "node": "Respond: Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-
   "active": true,
-  "settings": {},
-  "id": "full-leave-workflow",
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a1bb8f03-7b08-480d-a7f7-f04b178bd799",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a831f36a4592b7e2489dd2e8d454ce5bcf3c1e27a52a1c1c56da0af10735e74a"
+  },
+  "id": "HjSuOqHgXJ7L3Iz5",
   "tags": []
 }
