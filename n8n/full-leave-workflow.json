@@ -7,13 +7,13 @@
         "path": "leave-request",
         "options": {}
       },
-      "id": "82638863-fc89-4cdb-ab2a-437ca632ab16",
+      "id": "5870ea4c-d9bb-481d-8101-7ad98ddff6ce",
       "name": "Webhook: Leave Request",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        16272,
-        14048
+        24112,
+        15616
       ],
       "webhookId": "leave-request"
     },
@@ -23,13 +23,13 @@
         "path": "manager-decision",
         "options": {}
       },
-      "id": "81da1e52-044f-4f8d-956b-3f61b168c7ed",
+      "id": "6fe6476f-4a5d-4665-80d4-48ae0daab8e8",
       "name": "Webhook: Manager Decision",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        16272,
-        14448
+        24112,
+        16016
       ],
       "webhookId": "manager-decision"
     },
@@ -39,13 +39,13 @@
         "path": "hr-decision",
         "options": {}
       },
-      "id": "fc09f4bb-a8bc-4096-a5de-e35a5307e4c3",
+      "id": "6a39ebe5-a19a-4e16-b77e-d5bf4b3b29c7",
       "name": "Webhook: HR Decision",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        16272,
-        14960
+        24112,
+        16528
       ],
       "webhookId": "hr-decision"
     },
@@ -55,13 +55,13 @@
         "path": "return-early",
         "options": {}
       },
-      "id": "130e2346-807a-4073-90b4-39b595a065a5",
+      "id": "a84b8996-9339-4785-ba96-9f162f0944a2",
       "name": "Webhook: Return Early",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        16272,
-        15360
+        24112,
+        16928
       ],
       "webhookId": "return-early"
     },
@@ -71,13 +71,13 @@
         "path": "cancel-leave",
         "options": {}
       },
-      "id": "b66984cc-5f56-4a9a-bf21-5f123d0931ae",
+      "id": "ae4015a6-5fba-493a-ac3b-8515175665c2",
       "name": "Webhook: Cancel Leave",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        16272,
-        15760
+        24112,
+        17328
       ],
       "webhookId": "cancel-leave"
     },
@@ -87,13 +87,13 @@
         "path": "leave-reminder",
         "options": {}
       },
-      "id": "9bc78459-64b2-499d-9ad7-1539ecf131f5",
+      "id": "16cfc99a-aa48-4cb3-9870-2a60c952bdc2",
       "name": "Webhook: Leave Reminder",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        16272,
-        16160
+        24112,
+        17728
       ],
       "webhookId": "leave-reminder"
     },
@@ -103,13 +103,13 @@
         "path": "update-leave",
         "options": {}
       },
-      "id": "6202f137-3165-4067-8694-f8d668608898",
+      "id": "44c502b3-1127-488b-8b78-ae5a4341b24b",
       "name": "Webhook: Update Leave",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        16272,
-        16560
+        24112,
+        18128
       ],
       "webhookId": "update-leave"
     },
@@ -117,13 +117,13 @@
       "parameters": {
         "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  leave_date: body.leave_date || body.leaveDate || \"\",\n  leave_days: parseInt(body.leave_days || body.leaveDays || 0),\n  reason: body.reason || \"\",\n  employee_email: body.employee_email || body.employeeEmail || \"\",\n  employee_name: body.employee_name || body.employeeName || \"\",\n  department: body.department || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave'\n} };"
       },
-      "id": "5b996421-3567-44b6-a019-7f2c4f74cfad",
+      "id": "b54caf90-bd88-4cbe-9e49-0c92556d833e",
       "name": "Parse Leave Request",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16480,
-        14048
+        24320,
+        15616
       ]
     },
     {
@@ -174,26 +174,26 @@
         },
         "options": {}
       },
-      "id": "daa34d17-b3ea-4d7c-83fc-2ef7dd344d8d",
+      "id": "20834cd7-1b4c-4e95-8633-fd114b848851",
       "name": "HTTP: Create Leave",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        16672,
-        14048
+        24512,
+        15616
       ]
     },
     {
       "parameters": {
         "functionCode": "const response = item.json;\nconst data = response.body || response;\nconst input = $('Parse Leave Request').item.json;\n\nreturn { json: {\n  success: response.statusCode === 201 || response.statusCode === 200,\n  leaveId: data.leaveId || data._id || \"\",\n  status: data.status || \"pending\",\n  managerApprovalToken: data.managerApprovalToken || \"\",\n  hrApprovalToken: data.hrApprovalToken || \"\",\n  managerApprovalLink: data.managerApprovalLink || \"\",\n  hrApprovalLink: data.hrApprovalLink || \"\",\n  requiresHrApproval: data.requiresHrApproval || false,\n  // Lấy từ input request (Frontend gửi)\n  employeeName: input.employee_name || input.employeeName || \"\",\n  employeeEmail: input.employee_email || input.employeeEmail || \"\",\n  leaveDate: input.leave_date || input.leaveDate || \"\",\n  leaveDays: input.leave_days || input.leaveDays || 0,\n  reason: input.reason || \"\",\n  department: input.department || \"\",\n  // Backend trả về\n  managerEmail: data.managerEmail || data.manager_email || \"\",\n  hrEmail: data.hrEmail || data.hr_email || \"\"\n} };"
       },
-      "id": "d601fd04-b418-4b81-9215-5d9c4326a605",
+      "id": "377bbf78-9263-4b26-99c9-9c9a09cfb200",
       "name": "Parse Create Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16880,
-        14048
+        24720,
+        15616
       ]
     },
     {
@@ -208,13 +208,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "9fd6aa3a-3118-4e32-9a2f-f809336ba1ec",
+      "id": "54a7d570-3eba-464e-a2b1-81c19158a436",
       "name": "Email: To Manager",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17072,
-        14048
+        24912,
+        15616
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -227,26 +227,26 @@
       "parameters": {
         "options": {}
       },
-      "id": "844cbb74-e0f5-4a2b-8c09-aee5a140f826",
+      "id": "f9d0aa56-9877-477d-9492-49435db3b69d",
       "name": "Respond: Leave",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        17280,
-        14048
+        25120,
+        15616
       ]
     },
     {
       "parameters": {
         "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  action: body.action || \"\",\n  employeeName: body.employeeName || body.employee_name || \"\",\n  employeeEmail: body.employeeEmail || body.employee_email || \"\",\n  department: body.department || \"\",\n  leaveDate: body.leaveDate || body.leave_date || \"\",\n  leaveDays: parseInt(body.leaveDays || body.leave_days || 0),\n  reason: body.reason || \"\",\n  requiresHrApproval: body.requiresHrApproval || false,\n  hrApprovalLink: body.hrApprovalLink || \"\",\n  hrEmail: body.hrEmail || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/approval/manager'\n} };"
       },
-      "id": "ebf1745e-3d68-4a89-bb51-f8fef2191316",
+      "id": "6b8fed66-b74d-479b-86cc-2676a33c5c08",
       "name": "Parse Manager Decision",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16480,
-        14448
+        24320,
+        16016
       ]
     },
     {
@@ -281,26 +281,26 @@
         },
         "options": {}
       },
-      "id": "2c88e225-bb7f-4e0e-a45f-513cbb08047b",
+      "id": "68ec633d-3661-408f-bedb-57bf6f287e8c",
       "name": "HTTP: Manager Decision",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        16672,
-        14448
+        24512,
+        16016
       ]
     },
     {
       "parameters": {
         "functionCode": "const response = item.json;\nconst data = response.body || response;\nconst input = $('Parse Manager Decision').item.json;\n\nreturn { json: {\n  success: response.statusCode === 200,\n  status: data.status || \"\",\n  message: data.message || \"\",\n  leaveId: data.leaveId || \"\",\n  // Lấy từ input request (Frontend gửi)\n  action: input.action || \"\",\n  employeeName: input.employeeName || \"\",\n  employeeEmail: input.employeeEmail || \"\",\n  leaveDate: input.leaveDate || \"\",\n  leaveDays: input.leaveDays || 0,\n  reason: input.reason || \"\",\n  department: input.department || \"\",\n  requiresHrApproval: input.requiresHrApproval || false,\n  hrApprovalLink: input.hrApprovalLink || \"\",\n  hrEmail: input.hrEmail || \"\",\n  // Backend trả về\n  managerEmail: data.managerEmail || \"\"\n} };"
       },
-      "id": "2a284d58-df89-4202-9e3a-cbea6e20954c",
+      "id": "d8ed422a-440b-4977-af1d-abd896d4e2bd",
       "name": "Parse Manager Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16880,
-        14448
+        24720,
+        16016
       ]
     },
     {
@@ -329,10 +329,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        17072,
-        14448
+        24912,
+        16016
       ],
-      "id": "1addac09-43cf-40e1-925d-10c9af8a0034",
+      "id": "593d3829-bd91-41aa-9975-cb883d5f8440",
       "name": "Check: Rejected?"
     },
     {
@@ -361,10 +361,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        17328,
-        14624
+        25168,
+        16192
       ],
-      "id": "dfb661cf-f26d-409b-bc1b-694780925dcf",
+      "id": "0311cbb9-1a01-4db7-850a-44a65c8c3880",
       "name": "Check: Needs HR?"
     },
     {
@@ -379,13 +379,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "9706281b-63ed-4927-99d3-bc08d008e925",
+      "id": "235a3a0b-b08d-47f4-9927-16707c23b823",
       "name": "Email: Manager Rejected",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17472,
-        14224
+        25312,
+        15792
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -406,13 +406,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "41195497-f55c-49d0-8a6e-316a5ed281ce",
+      "id": "719c1d71-bf94-4cd6-9f23-ef82f3933ad4",
       "name": "Email: To HR",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17536,
-        14480
+        25376,
+        16048
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -433,13 +433,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "21071fa5-7c52-46bb-a0fe-81362eb0f903",
+      "id": "a29e73d9-c6d6-47fe-aae8-efe13dcf53b5",
       "name": "Email: Waiting HR",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17824,
-        14480
+        25664,
+        16048
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -460,13 +460,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "3a510275-e19c-4d1f-8e60-b3568c8a66d9",
+      "id": "6c22c44b-1a70-423b-a4ae-02916f73f122",
       "name": "Email: Approved",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17600,
-        14720
+        25440,
+        16288
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -479,26 +479,26 @@
       "parameters": {
         "options": {}
       },
-      "id": "653b435a-2460-42a5-8b84-26faa9c0fa76",
+      "id": "5e5a0f66-50ef-476a-be06-ac708c2a548c",
       "name": "Respond: Manager",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        18224,
-        14480
+        26064,
+        16048
       ]
     },
     {
       "parameters": {
         "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  token: body.token || \"\",\n  action: body.action || \"\",\n  employeeName: body.employeeName || body.employee_name || \"\",\n  employeeEmail: body.employeeEmail || body.employee_email || \"\",\n  leaveDate: body.leaveDate || body.leave_date || \"\",\n  leaveDays: parseInt(body.leaveDays || body.leave_days || 0),\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/approval/hr'\n} };"
       },
-      "id": "4fb36b4c-9fbb-47de-9d98-1179c71d1625",
+      "id": "12f5658e-3ed9-48ba-b8f8-8c41dd4cc16e",
       "name": "Parse HR Decision",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16480,
-        14960
+        24320,
+        16528
       ]
     },
     {
@@ -533,26 +533,26 @@
         },
         "options": {}
       },
-      "id": "e55ac3d1-9880-4228-9848-09210af26161",
+      "id": "8b87d91a-c237-4c25-b1b7-5c98cce590ea",
       "name": "HTTP: HR Decision",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        16672,
-        14960
+        24512,
+        16528
       ]
     },
     {
       "parameters": {
         "functionCode": "const response = item.json;\nconst data = response.body || response;\nconst input = $('Parse HR Decision').item.json;\n\nreturn { json: {\n  success: response.statusCode === 200,\n  status: data.status || \"\",\n  message: data.message || \"\",\n  leaveId: data.leaveId || \"\",\n  // Lấy từ input request (Frontend gửi)\n  action: input.action || \"\",\n  employeeName: input.employeeName || \"\",\n  employeeEmail: input.employeeEmail || \"\",\n  leaveDate: input.leaveDate || \"\",\n  leaveDays: input.leaveDays || 0\n} };"
       },
-      "id": "cd9ccb9b-1679-4241-92d7-1b467f8eaa25",
+      "id": "e9b8e018-f481-4d99-a8a6-58c8adb6a8f9",
       "name": "Parse HR Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16880,
-        14960
+        24720,
+        16528
       ]
     },
     {
@@ -581,10 +581,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        17072,
-        14960
+        24912,
+        16528
       ],
-      "id": "f686dde5-ec86-44cc-acf5-e0d6c861e2f0",
+      "id": "c0c41947-5e3c-4f29-8960-07885f5ae292",
       "name": "Check: HR Approved?"
     },
     {
@@ -599,13 +599,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "ee833f05-6244-46e5-afc0-cee4df018900",
+      "id": "ec2ccae9-b1d7-4145-8955-d3872f9cb215",
       "name": "Email: HR Approved",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17408,
-        14896
+        25248,
+        16464
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -626,13 +626,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "09c2eb93-1453-40cf-925c-581ecf6770e8",
+      "id": "c5b2da65-7c31-4d54-a3c1-0ece4c69ca59",
       "name": "Email: HR Rejected",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17408,
-        15120
+        25248,
+        16688
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -645,26 +645,26 @@
       "parameters": {
         "options": {}
       },
-      "id": "cda5cf4d-6a6d-4b48-9faa-cda8415e1ca7",
+      "id": "3b0e1195-a007-4158-90af-29ff8367c17e",
       "name": "Respond: HR",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        17680,
-        14960
+        25520,
+        16528
       ]
     },
     {
       "parameters": {
-        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/return-early',\n  actualReturnDate: body.actualReturnDate || new Date().toISOString(),\n  employeeName: body.employeeName || \"\",\n  employeeEmail: body.employeeEmail || \"\",\n  leaveDate: body.leaveDate || \"\",\n  leaveDays: body.leaveDays || 0,\n  reason: body.reason || \"\",\n  department: body.department || \"\",\n  managerEmail: body.managerEmail || \"\",\n  hrEmail: body.hrEmail || \"\"\n} };"
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  token: body.token || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/return-early',\n  actualReturnDate: body.actualReturnDate || new Date().toISOString(),\n  refundDays: body.refundDays || 0,\n  employeeName: body.employeeName || \"\",\n  employeeEmail: body.employeeEmail || \"\",\n  leaveDate: body.leaveDate || \"\",\n  leaveDays: body.leaveDays || 0,\n  reason: body.reason || \"\",\n  department: body.department || \"\",\n  managerEmail: body.managerEmail || \"\",\n  hrEmail: body.hrEmail || \"\"\n} };"
       },
-      "id": "4c7c64f9-6183-4381-b9ad-3e8f39dffe06",
+      "id": "bfca15c2-8875-45ed-936e-0406d12d0af7",
       "name": "Parse Return Early",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16480,
-        15360
+        24320,
+        16928
       ]
     },
     {
@@ -699,26 +699,26 @@
         },
         "options": {}
       },
-      "id": "8d875ccc-ce5a-4bac-9d5a-3d14a9d34e97",
+      "id": "1aff6854-9392-4f8d-a9c3-e273d8b2edc0",
       "name": "HTTP: Return Early",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        16672,
-        15360
+        24512,
+        16928
       ]
     },
     {
       "parameters": {
-        "functionCode": "const response = item.json;\nreturn { json: {\n  success: response.statusCode === 200,\n  refundDays: response.json?.refundDays || response.body?.refundDays || 0,\n  status: response.json?.status || response.body?.status || \"refunded\",\n  leaveId: response.json?.leaveId || response.body?.leaveId || \"\",\n  employeeName: response.json?.employeeName || response.body?.employeeName || \"\",\n  employeeEmail: response.json?.employeeEmail || response.body?.employeeEmail || \"\",\n  leaveDate: response.json?.leaveDate || response.body?.leaveDate || \"\",\n  leaveDays: response.json?.leaveDays || response.body?.leaveDays || 0\n} };"
+        "functionCode": "const response = item.json;\nreturn { json: {\n  success: response.statusCode === 200,\n  refundDays: response.json?.refundDays || response.body?.refundDays || 0,\n  status: response.json?.status || response.body?.status || \"refunded\",\n  leaveId: response.json?.leaveId || response.body?.leaveId || \"\",\n  employeeName: response.json?.employeeName || response.body?.employeeName || \"\",\n  employeeEmail: response.json?.employeeEmail || response.body?.employeeEmail || \"\",\n  leaveDate: response.json?.leaveDate || response.body?.leaveDate || \"\",\n  leaveDays: response.json?.leaveDays || response.body?.leaveDays || 0,\n  managerEmail: response.json?.managerEmail || response.body?.managerEmail || \"\",\n  hrEmail: response.json?.hrEmail || response.body?.hrEmail || \"\",\n  actualReturnDate: response.json?.actualReturnDate || response.body?.actualReturnDate || new Date().toISOString()\n} };"
       },
-      "id": "50647336-70d3-40de-802c-5722bba61479",
+      "id": "1f18003f-89fb-4263-8765-5a31048e5ad1",
       "name": "Parse Return Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16880,
-        15360
+        24720,
+        16928
       ]
     },
     {
@@ -733,13 +733,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "f399b9a1-d93a-4011-80e5-5cf57089ec28",
+      "id": "55e0bbc5-10c3-42dc-9437-acb71034e497",
       "name": "Email: Refund to Manager",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17072,
-        15360
+        24912,
+        16928
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -760,13 +760,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "ea9681cb-acd2-493f-9568-2e9a93f1b6f2",
+      "id": "fbdad78a-afee-4f1c-ae08-b0da76324248",
       "name": "Email: Refund to Employee",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17248,
-        15360
+        25088,
+        16928
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -781,26 +781,26 @@
         "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Đã hoàn trả ngày phép\",\n  \"refundDays\": {{ $json.refundDays }}\n}",
         "options": {}
       },
-      "id": "f166da5a-c1e2-479b-8d00-52d873795e56",
+      "id": "e0f33df8-c360-4094-9f0d-2aba6ff1dade",
       "name": "Respond: Return OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        17472,
-        15360
+        25312,
+        16928
       ]
     },
     {
       "parameters": {
-        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/cancel'\n} };"
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  token: body.token || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/cancel'\n} };"
       },
-      "id": "1ac7d7fa-ca43-413e-9044-294ff9bc8573",
+      "id": "e5efb11c-b178-4142-8d61-f4ed544a8ccd",
       "name": "Parse Cancel",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16480,
-        15760
+        24320,
+        17328
       ]
     },
     {
@@ -831,26 +831,26 @@
         },
         "options": {}
       },
-      "id": "620e1ad8-fee6-4571-a73a-201d3947cdf9",
+      "id": "29ce3cc7-cae5-4cea-a08f-23bdb07623ab",
       "name": "HTTP: Cancel Leave",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        16672,
-        15760
+        24512,
+        17328
       ]
     },
     {
       "parameters": {
         "functionCode": "const response = item.json;\nreturn { json: {\n  success: response.statusCode === 200,\n  status: response.json?.status || response.body?.status || \"cancelled\",\n  message: response.json?.message || response.body?.message || \"\",\n  leaveId: response.json?.leaveId || response.body?.leaveId || \"\",\n  cancelledAt: response.json?.cancelledAt || response.body?.cancelledAt || new Date().toISOString(),\n  employeeName: response.json?.employeeName || response.body?.employeeName || \"\",\n  employeeEmail: response.json?.employeeEmail || response.body?.employeeEmail || \"\",\n  leaveDate: response.json?.leaveDate || response.body?.leaveDate || \"\",\n  leaveDays: response.json?.leaveDays || response.body?.leaveDays || 0,\n  reason: response.json?.reason || response.body?.reason || \"\",\n  department: response.json?.department || response.body?.department || \"\",\n  managerEmail: response.json?.managerEmail || response.body?.managerEmail || \"\",\n  hrEmail: response.json?.hrEmail || response.body?.hrEmail || \"\"\n} };"
       },
-      "id": "13e90ded-e529-472f-9653-df7e4069bad1",
+      "id": "215ad8f7-8dab-4609-96b3-8d488a91d371",
       "name": "Parse Cancel Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16880,
-        15760
+        24720,
+        17328
       ]
     },
     {
@@ -865,13 +865,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "4bdfc400-17dc-4654-8e7e-a97659856bb9",
+      "id": "2323b2f0-5f79-48be-aa6a-9b81610d1de0",
       "name": "Email: Cancel to Manager",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17072,
-        15760
+        24912,
+        17328
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -892,13 +892,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "12ce44fb-d078-4a61-9f11-5110acf5bfc7",
+      "id": "8887ba43-038c-40fa-b42b-aa7926893b86",
       "name": "Email: Cancel Confirm",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17264,
-        15760
+        25104,
+        17328
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -911,26 +911,26 @@
       "parameters": {
         "options": {}
       },
-      "id": "118251c5-2d92-46c7-94ad-c9dc560b95b9",
+      "id": "76d115a3-79cd-4d92-bae1-3b56b1de0289",
       "name": "Respond: Cancel",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        17456,
-        15760
+        25296,
+        17328
       ]
     },
     {
       "parameters": {
         "functionCode": "const body = item.json.body || item.json;\nreturn { json: { employeeName: body.employeeName || \"\", employeeEmail: body.employeeEmail || \"\", leaveDate: body.leaveDate || \"\", managerEmail: body.managerEmail || \"\", managerApprovalLink: body.managerApprovalLink || \"\" } };"
       },
-      "id": "d3ee0b45-2681-4155-a8da-10e3672f6a16",
+      "id": "ea43f670-a853-434f-8e0b-bd42358f0389",
       "name": "Parse Reminder",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16480,
-        16160
+        24320,
+        17728
       ]
     },
     {
@@ -945,13 +945,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "f7a422b9-a05e-42f3-a1cc-55791149673c",
+      "id": "5bbdbac6-6833-4757-8eb2-01212847f552",
       "name": "Email: Reminder",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        16672,
-        16160
+        24512,
+        17728
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -964,26 +964,26 @@
       "parameters": {
         "options": {}
       },
-      "id": "70f8a018-79a5-417f-9967-929a14d3e8fd",
+      "id": "7518036b-9b5d-4254-9ded-f1a1d0d962e8",
       "name": "Respond: Reminder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        16880,
-        16160
+        24720,
+        17728
       ]
     },
     {
       "parameters": {
-        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/update',\n  leave_date: body.leave_date || body.leaveDate || \"\",\n  leave_days: parseInt(body.leave_days || body.leaveDays || 0),\n  reason: body.reason || \"\"\n} };"
+        "functionCode": "const body = item.json.body || item.json;\nreturn { json: {\n  leaveId: body.leaveId || \"\",\n  token: body.token || \"\",\n  backendUrl: body.backendUrl || 'https://approvehub.internalautomation.io.vn/api/leave/update',\n  leave_date: body.leave_date || body.leaveDate || \"\",\n  leave_days: parseInt(body.leave_days || body.leaveDays || 0),\n  reason: body.reason || \"\"\n} };"
       },
-      "id": "84a3d8bb-8def-4539-ac61-a880d86c8d99",
+      "id": "f01289c4-d2cb-40d1-af99-8a2b6d86d273",
       "name": "Parse Update",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16480,
-        16560
+        24320,
+        18128
       ]
     },
     {
@@ -1026,26 +1026,26 @@
         },
         "options": {}
       },
-      "id": "12c3d829-a631-4c40-9168-a954e834d7de",
+      "id": "b810da0b-bafc-469a-a994-d83a75a5c7b8",
       "name": "HTTP: Update Leave",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        16672,
-        16560
+        24512,
+        18128
       ]
     },
     {
       "parameters": {
         "functionCode": "const response = item.json;\nreturn { json: {\n  success: response.statusCode === 200,\n  status: response.json?.status || response.body?.status || \"updated\",\n  message: response.json?.message || response.body?.message || \"\",\n  leaveId: response.json?.leaveId || response.body?.leaveId || \"\",\n  managerApprovalToken: response.json?.managerApprovalToken || response.body?.managerApprovalToken || \"\",\n  hrApprovalToken: response.json?.hrApprovalToken || response.body?.hrApprovalToken || \"\",\n  managerApprovalLink: response.json?.managerApprovalLink || response.body?.managerApprovalLink || \"\",\n  hrApprovalLink: response.json?.hrApprovalLink || response.body?.hrApprovalLink || null,\n  employeeName: response.json?.employeeName || response.body?.employeeName || \"\",\n  employeeEmail: response.json?.employeeEmail || response.body?.employeeEmail || \"\",\n  leaveDate: response.json?.leaveDate || response.body?.leaveDate || \"\",\n  leaveDays: response.json?.leaveDays || response.body?.leaveDays || 0\n} };"
       },
-      "id": "55f7003c-954b-41f8-ac5d-293986593325",
+      "id": "d11b000a-ac85-44a8-8a61-4d711b8c330b",
       "name": "Parse Update Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        16880,
-        16560
+        24720,
+        18128
       ]
     },
     {
@@ -1060,13 +1060,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "906c3e45-c04e-41ce-accf-b8b5223f4d45",
+      "id": "92cf4728-e654-4875-84da-c0a6e2a106ce",
       "name": "Email: Update Notify",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [
-        17072,
-        16560
+        24912,
+        18128
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -1079,13 +1079,13 @@
       "parameters": {
         "options": {}
       },
-      "id": "0ce3d63d-b9a3-403c-8db0-f6fd8b44ff78",
+      "id": "91152dd1-fab3-4006-90f8-254d0e06e3fb",
       "name": "Respond: Update",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        17280,
-        16560
+        25120,
+        18128
       ]
     }
   ],
@@ -1580,7 +1580,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "a1bb8f03-7b08-480d-a7f7-f04b178bd799",
+  "versionId": "a4c0701f-439d-4aec-9254-240834ceaf0b",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "a831f36a4592b7e2489dd2e8d454ce5bcf3c1e27a52a1c1c56da0af10735e74a"

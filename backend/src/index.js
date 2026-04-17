@@ -431,6 +431,19 @@ app.get("/api/leave", verifyToken, async (req, res) => {
 app.get("/api/leave/:id", verifyToken, async (req, res) => {
   try {
     const request = await LeaveRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    // Check quyền truy cập
+    if (req.user.role === "employee" && request.employeeId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Không có quyền xem đơn này" });
+    }
+    if (req.user.role === "manager" && request.department !== req.user.department) {
+      return res.status(403).json({ message: "Không có quyền xem đơn này" });
+    }
+    // HR có thể xem tất cả
+
     res.json(request || {});
   } catch (error) {
     res.status(500).json({ message: "Error" });
@@ -438,7 +451,7 @@ app.get("/api/leave/:id", verifyToken, async (req, res) => {
 });
 
 // DELETE /api/leave/:id - Hủy đơn nghỉ phép (gọi từ N8N webhook)
-app.delete("/api/leave/:id", async (req, res) => {
+app.delete("/api/leave/:id", verifyToken, async (req, res) => {
   try {
     const leaveId = req.params.id;
     const request = await LeaveRequest.findById(leaveId);
@@ -486,7 +499,7 @@ app.delete("/api/leave/:id", async (req, res) => {
 });
 
 // POST /api/leave/:id/return-early - Về sớm (gọi từ N8N webhook)
-app.post("/api/leave/:id/return-early", async (req, res) => {
+app.post("/api/leave/:id/return-early", verifyToken, async (req, res) => {
   try {
     const { actualReturnDate } = req.body;
     const request = await LeaveRequest.findById(req.params.id);
@@ -540,7 +553,7 @@ app.post("/api/leave/:id/return-early", async (req, res) => {
 });
 
 // PUT /api/leave/:id - Cập nhật đơn nghỉ phép (gọi từ N8N webhook)
-app.put("/api/leave/:id", async (req, res) => {
+app.put("/api/leave/:id", verifyToken, async (req, res) => {
   try {
     const { leave_date, leave_days, reason, managerApprovalToken, hrApprovalToken } = req.body;
     const request = await LeaveRequest.findById(req.params.id);

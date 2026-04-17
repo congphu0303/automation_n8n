@@ -133,13 +133,6 @@
     // ─── GLOBAL STATE ───
     let userRole = "";
 
-    // ─── Restore token from pendingApprovalToken if exists ───
-    const pendingToken = sessionStorage.getItem("pendingApprovalToken");
-    if (pendingToken && !token) {
-      // Clear the pending token since we'll redirect to login
-      sessionStorage.removeItem("pendingApprovalToken");
-    }
-
     // ─── DEFINE FUNCTIONS FIRST (before calling) ───
     const statusBadge = (status) => {
       const map = {
@@ -442,7 +435,7 @@
     });
 
     // ─── INITIALIZATION ───
-    hideLoading(); // CRITICAL: Hide loading immediately
+    // Không hide loading ở đây - sẽ hide sau khi verify
 
     // ─── Nếu có approvalToken từ link email ───
     if (approvalToken) {
@@ -488,12 +481,15 @@
           return;
         }
 
+        // ✅ Verify OK - Hide loading
+        hideLoading();
+
         document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
         document.getElementById("userName").textContent = user.name || "Guest";
         document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : "Manager";
         document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
 
-        initSidebar({ activePage: "approvals", user });
+        initSidebar(); // Auto-detects active page and role from localStorage
 
         document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
           e.preventDefault();

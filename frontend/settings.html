@@ -179,6 +179,49 @@
         ? "http://localhost:3001/api"
         : "/api";
     const token = localStorage.getItem("token");
+    const cachedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+    // ── Auth guard: only HR can access Settings ──
+    ;(async () => {
+      // Hiển thị UI với cached user nếu có
+      if (cachedUser && cachedUser.role === "hr") {
+        initSidebar(); // Tự đọc user từ localStorage
+        document.getElementById("avatar").textContent = (cachedUser.name || "??").slice(0, 2).toUpperCase();
+        document.getElementById("userName").textContent = cachedUser.name || "HR Admin";
+        document.getElementById("userRole").textContent = "HR Administrator";
+        document.getElementById("loadingOverlay").classList.add("hidden");
+      }
+
+      // Verify token
+      if (!token) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Token invalid");
+
+        const me = await res.json();
+        if (me.role !== "hr") throw new Error("Not HR");
+
+        const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // Update UI nếu cần
+        document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+        document.getElementById("userName").textContent = user.name || "HR Admin";
+
+        // Load data
+        loadUsers();
+      } catch (err) {
+        console.log("[Settings] Auth failed:", err.message);
+        // Redirect về login nếu không phải HR
+        window.location.href = "login.html";
+      }
+    })();
 
     const clearSession = () => {
       localStorage.removeItem("token");
@@ -186,42 +229,11 @@
       window.location.href = "login.html";
     };
 
-    // ── Auth guard: only HR can access Settings ──
-    ;(async () => {
-      if (!token) { clearSession(); return; }
-      let me;
-      try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) { clearSession(); return; }
-        me = await res.json();
-      } catch { clearSession(); return; }
-
-      if (me.role !== "hr") { clearSession(); return; }
-
-      const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
-      localStorage.setItem("user", JSON.stringify(user));
-
-      document.getElementById("loadingOverlay").classList.add("hidden");
-
-      // ── Init shared sidebar ──
-      initSidebar({ activePage: "settings", user });
-
-      // ── Header user info ──
-      document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-      document.getElementById("userName").textContent = user.name || "HR Admin";
-      document.getElementById("userRole").textContent = "HR Administrator";
-
-      // ── Logout (header button) ──
-      document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        clearSession();
-      });
-
-      // ── Load data ──
-      loadUsers();
-    })();
+    // ── Logout (header button) ──
+    document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      clearSession();
+    });
 
     // ── Tabs ──
     document.getElementById("tabUsers").addEventListener("click", () => {

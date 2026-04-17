@@ -140,8 +140,14 @@
   </div>
 
   <script src="sidebar.js"></script>
-  <script>
-    const API_URL = "https://approvehub.internalautomation.io.vn/api";
+<script>
+    // Backend API URL - detect environment
+    const API_URL =
+      window.location.protocol === "file:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3001/api"
+        : "/api";
 
     const clearSession = () => {
       localStorage.removeItem("token");
@@ -163,10 +169,6 @@
     let allLeaves = [];
     let currentTab = "all";
     let currentLeaveIdForReturn = null;
-
-    const hideLoading = () => {
-      document.getElementById("loadingOverlay").classList.add("hidden");
-    };
 
     const statusBadge = (status) => {
       const map = {
@@ -287,7 +289,6 @@
                 </div>
               </div>
 
-              <!-- Trạng thái duyệt -->
               <div class="flex flex-wrap gap-2 mb-3">
                 ${statusBadge(r.status)}
                 ${managerStatusBadge(r.manager_status)}
@@ -342,7 +343,14 @@
           try {
             const res = await fetch(`${API_URL}/leave/${leaveId}`, {
               method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` },
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                token: token,
+                reason: "Cancelled by employee"
+              }),
             });
             const data = await res.json();
             if (res.ok) {
@@ -448,9 +456,8 @@
       });
     });
 
-    // Init
+    // Init - Verify auth TRƯỚC khi hiển thị UI
     (async () => {
-      hideLoading();
       if (!token) { clearSession(); return; }
 
       let me;
@@ -469,12 +476,15 @@
       document.getElementById("userName").textContent = currentUser.name;
       document.getElementById("userRole").textContent = currentUser.role === "hr" ? "HR" : currentUser.role === "manager" ? "Quản lý" : "Nhân viên";
 
-      initSidebar({ activePage: "my-leaves", user: currentUser });
+      initSidebar();
 
       document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
         e.preventDefault();
         clearSession();
       });
+
+      // ✅ Verify OK - Hide loading
+      document.getElementById("loadingOverlay").classList.add("hidden");
 
       await loadLeaves();
     })();

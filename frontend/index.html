@@ -144,8 +144,8 @@
       document.getElementById("userRole").textContent = roleLabels[user.role] || user.role || "";
       document.getElementById("welcomeTitle").textContent = `Welcome back, ${user.name || "User"}!`;
 
-      // Init shared sidebar — handles role-based nav visibility
-      initSidebar({ activePage: "index", user });
+      // Init shared sidebar — auto-detects active page and role from localStorage
+      initSidebar();
 
       // ── Status badges ──
       const statusBadge = (status) => {
