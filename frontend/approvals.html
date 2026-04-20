@@ -33,14 +33,6 @@
         </div>
       </header>
 
-      <!-- Loading overlay -->
-      <div id="loadingOverlay" class="fixed inset-0 bg-zinc-100 flex items-center justify-center z-50">
-        <div class="text-center">
-          <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
-          <p class="text-sm text-zinc-400">Loading...</p>
-        </div>
-      </div>
-
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
         <div class="max-w-5xl mx-auto">
@@ -64,8 +56,74 @@
               <button id="tabRejected" class="px-4 py-2 text-sm font-medium rounded-lg bg-zinc-200 text-zinc-600 hover:bg-zinc-300">Rejected</button>
             </div>
 
-            <!-- Pending List -->
-            <div id="pendingList" class="space-y-4"></div>
+            <!-- Pending List (with Skeleton) -->
+            <div id="loadingState" class="space-y-4">
+              <!-- Skeleton cards (3 items) -->
+              <div class="bg-white rounded-xl border border-zinc-200 p-6">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 space-y-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-zinc-200 animate-pulse"></div>
+                      <div class="space-y-2">
+                        <div class="h-4 w-32 bg-zinc-200 rounded animate-pulse"></div>
+                        <div class="h-3 w-48 bg-zinc-100 rounded"></div>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <div class="h-6 w-20 bg-zinc-200 rounded-full animate-pulse"></div>
+                      <div class="h-6 w-24 bg-zinc-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="h-4 w-64 bg-zinc-100 rounded"></div>
+                      <div class="h-4 w-48 bg-zinc-100 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white rounded-xl border border-zinc-200 p-6">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 space-y-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-zinc-200 animate-pulse"></div>
+                      <div class="space-y-2">
+                        <div class="h-4 w-36 bg-zinc-200 rounded animate-pulse"></div>
+                        <div class="h-3 w-40 bg-zinc-100 rounded"></div>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <div class="h-6 w-20 bg-zinc-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="h-4 w-56 bg-zinc-100 rounded"></div>
+                      <div class="h-4 w-40 bg-zinc-100 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white rounded-xl border border-zinc-200 p-6">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 space-y-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-zinc-200 animate-pulse"></div>
+                      <div class="space-y-2">
+                        <div class="h-4 w-28 bg-zinc-200 rounded animate-pulse"></div>
+                        <div class="h-3 w-52 bg-zinc-100 rounded"></div>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <div class="h-6 w-20 bg-zinc-200 rounded-full animate-pulse"></div>
+                      <div class="h-6 w-24 bg-zinc-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="h-4 w-48 bg-zinc-100 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Real List (hidden initially) -->
+            <div id="pendingList" class="space-y-4 hidden"></div>
 
             <!-- Empty State -->
             <div id="emptyState" class="hidden bg-white rounded-xl border border-zinc-200 p-12 text-center">
@@ -122,14 +180,6 @@
       window.location.href = target;
     };
 
-    // ─── HIDE LOADING OVERLAY (CRITICAL - must be immediate) ───
-    const hideLoading = () => {
-      const overlay = document.getElementById("loadingOverlay");
-      if (overlay) {
-        overlay.classList.add("hidden");
-      }
-    };
-
     // ─── GLOBAL STATE ───
     let userRole = "";
 
@@ -157,7 +207,8 @@
 
         if (!res.ok) {
           document.getElementById("tokenDetails").innerHTML = `<p class="text-red-500">${data.message}</p>`;
-          hideLoading();
+          document.getElementById("loadingState").classList.add("hidden");
+          document.getElementById("tokenView").classList.remove("hidden");
           return;
         }
 
@@ -174,7 +225,9 @@
             </div>
           `;
           document.getElementById("tokenActions").innerHTML = "";
-          hideLoading();
+          // Hide skeleton, show token view
+          document.getElementById("loadingState").classList.add("hidden");
+          document.getElementById("tokenView").classList.remove("hidden");
           return;
         }
 
@@ -216,7 +269,9 @@
         console.error("loadTokenRequest error:", err);
         document.getElementById("tokenDetails").innerHTML = `<p class="text-red-500">Error loading request</p>`;
       }
-      hideLoading();
+      // Hide skeleton, show token view
+      document.getElementById("loadingState").classList.add("hidden");
+      document.getElementById("tokenView").classList.remove("hidden");
     }
 
     async function handleApproval(tkn, action, type) {
@@ -224,35 +279,55 @@
       resultDiv.classList.remove("hidden");
       resultDiv.innerHTML = `<p class="text-sm text-blue-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing...</p>`;
 
-      // Gửi trực tiếp đến N8N webhook
-      const n8nWebhookUrl = type === "hr"
-        ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-          ? "http://localhost:5678/webhook/hr-decision"
-          : "https://n8n.internalautomation.io.vn/webhook/hr-decision")
-        : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-          ? "http://localhost:5678/webhook/manager-decision"
-          : "https://n8n.internalautomation.io.vn/webhook/manager-decision");
+      // Lấy email người duyệt từ session đã đăng nhập
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const approverEmail = currentUser.email || "";
+
+      // Determine endpoint based on type
+      const endpoint = type === "hr"
+        ? `${API_URL}/approval/hr`
+        : `${API_URL}/approval/manager`;
 
       try {
-        const res = await fetch(n8nWebhookUrl, {
+        // Try direct backend call first (more reliable)
+        let res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token: tkn,
-            action: action,
-            employeeName: tokenRequestData?.employee_name || "",
-            employeeEmail: tokenRequestData?.employee_email || "",
-            department: tokenRequestData?.department || "",
-            leaveDate: tokenRequestData?.leave_date || "",
-            leaveDays: tokenRequestData?.leave_days || 0,
-            reason: tokenRequestData?.reason || "",
-            requiresHrApproval: tokenRequestData?.leave_days > 3 || false,
-            hrApprovalLink: tokenRequestData?.hrApprovalLink || "",
-            hrEmail: tokenRequestData?.hrEmail || tokenRequestData?.hr_email || ""
-          }),
+          body: JSON.stringify({ token: tkn, action: action, approverEmail }),
         });
 
-        // N8N respond với JSON
+        // If direct call fails, try N8N webhook
+        if (!res.ok) {
+          console.warn("Direct backend call failed, trying N8N...");
+          const n8nWebhookUrl = type === "hr"
+            ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+              ? "http://localhost:5678/webhook/hr-decision"
+              : "https://n8n.internalautomation.io.vn/webhook/hr-decision")
+            : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+              ? "http://localhost:5678/webhook/manager-decision"
+              : "https://n8n.internalautomation.io.vn/webhook/manager-decision");
+
+          res = await fetch(n8nWebhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: tkn,
+              action: action,
+              approverEmail,
+              employeeName: tokenRequestData?.employee_name || "",
+              employeeEmail: tokenRequestData?.employee_email || "",
+              department: tokenRequestData?.department || "",
+              leaveDate: tokenRequestData?.leave_date || "",
+              leaveDays: tokenRequestData?.leave_days || 0,
+              reason: tokenRequestData?.reason || "",
+              requiresHrApproval: tokenRequestData?.leave_days > 3 || false,
+              hrApprovalLink: tokenRequestData?.hrApprovalLink || "",
+              hrEmail: tokenRequestData?.hrEmail || tokenRequestData?.hr_email || ""
+            }),
+          });
+        }
+
+        // Get response data
         const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
@@ -284,6 +359,10 @@
           return;
         }
         renderList(data);
+
+        // Hide skeleton, show real list
+        document.getElementById("loadingState").classList.add("hidden");
+        document.getElementById("pendingList").classList.remove("hidden");
       } catch (err) {
         console.error("loadRequests error:", err);
       }
@@ -379,10 +458,14 @@
     }
 
     async function quickApprove(tkn, endpoint, btn, requestData) {
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      requestData.approverEmail = currentUser.email || "";
       await handleLeaveAction(tkn, endpoint, "approve", btn, requestData);
     }
 
     async function quickReject(tkn, endpoint, btn, requestData) {
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      requestData.approverEmail = currentUser.email || "";
       await handleLeaveAction(tkn, endpoint, "reject", btn, requestData);
     }
 
@@ -394,28 +477,81 @@
       const badgeArea = row.querySelector(".shrink-0");
       badgeArea.innerHTML = `<p class="text-xs text-blue-500 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Processing...</p>`;
 
-      const apiEndpoint = endpoint.includes("hr-decision")
-        ? `${API_URL}/approval/hr`
-        : `${API_URL}/approval/manager`;
+      // Determine if this is HR approval
+      const isHR = endpoint.includes("hr");
+      const n8nWebhookUrl = isHR ? N8N_HR_WEBHOOK : N8N_MANAGER_WEBHOOK;
 
       try {
-        const res = await fetch(apiEndpoint, {
+        // Call N8N webhook with full request data
+        const res = await fetch(n8nWebhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: tkn, action }),
+          body: JSON.stringify({
+            token: tkn,
+            action: action,
+            // Additional data from requestData for N8N to pass to backend
+            employeeName: requestData.employee_name,
+            employeeEmail: requestData.employee_email,
+            leaveDate: requestData.leave_date,
+            leaveDays: requestData.leave_days,
+            reason: requestData.reason,
+            department: requestData.department,
+            // Include manager email if available (for email notifications)
+            managerEmail: requestData.manager_email || "",
+            // Backend URL for N8N to call
+            backendUrl:
+              window.location.hostname === "localhost" ||
+              window.location.hostname === "127.0.0.1"
+                ? "http://localhost:3001/api/approval/manager"
+                : "/api/approval/manager",
+          }),
         });
-        const data = await res.json();
-
-        if (res.ok) {
-          const color = action === "approve" ? "text-green-600" : "text-red-600";
-          const icon = action === "approve" ? "fa-check-circle" : "fa-xmark-circle";
-          badgeArea.innerHTML = `<p class="text-xs font-medium ${color}"><i class="fa-solid ${icon} mr-1"></i>${data.message || action === "approve" ? "Approved" : "Rejected"}</p>`;
-          setTimeout(loadRequests, 1500);
-        } else {
-          badgeArea.innerHTML = `<p class="text-xs text-red-500 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>${data.message || "Error"}</p>`;
-          buttons.forEach(b => { b.disabled = false; b.classList.remove("opacity-50"); });
+        
+        // If N8N fails, fallback to direct backend call
+        if (!res.ok) {
+          console.warn("N8N webhook failed, trying direct backend call...");
+          const directRes = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: tkn, action: action }),
+          });
+          
+          if (!directRes.ok) {
+            const errorData = await directRes.json().catch(() => ({}));
+            badgeArea.innerHTML = `<p class="text-xs text-red-500 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>${errorData.message || "Error"}</p>`;
+            buttons.forEach(b => { b.disabled = false; b.classList.remove("opacity-50"); });
+            return;
+          }
         }
-      } catch {
+        
+        const data = await res.json().catch(() => ({}));
+
+        const color = action === "approve" ? "text-green-600" : "text-red-600";
+        const icon = action === "approve" ? "fa-check-circle" : "fa-xmark-circle";
+        badgeArea.innerHTML = `<p class="text-xs font-medium ${color}"><i class="fa-solid ${icon} mr-1"></i>${data.message || (action === "approve" ? "Approved" : "Rejected")}</p>`;
+        setTimeout(loadRequests, 1500);
+      } catch (error) {
+        console.error("Approval error:", error);
+        
+        // Final fallback: direct backend call
+        try {
+          const fallbackRes = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: tkn, action: action }),
+          });
+          
+          if (fallbackRes.ok) {
+            const color = action === "approve" ? "text-green-600" : "text-red-600";
+            const icon = action === "approve" ? "fa-check-circle" : "fa-xmark-circle";
+            badgeArea.innerHTML = `<p class="text-xs font-medium ${color}"><i class="fa-solid ${icon} mr-1"></i>${action === "approve" ? "Approved" : "Rejected"} (direct)</p>`;
+            setTimeout(loadRequests, 1500);
+            return;
+          }
+        } catch (fallbackError) {
+          console.error("Fallback also failed:", fallbackError);
+        }
+        
         badgeArea.innerHTML = `<p class="text-xs text-red-500 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i>Connection error</p>`;
         buttons.forEach(b => { b.disabled = false; b.classList.remove("opacity-50"); });
       }
@@ -477,12 +613,11 @@
               <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
               <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
             </div>`;
-          hideLoading();
+          // Hide skeleton, show error
+          document.getElementById("loadingState").classList.add("hidden");
+          document.getElementById("listView").classList.remove("hidden");
           return;
         }
-
-        // ✅ Verify OK - Hide loading
-        hideLoading();
 
         document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
         document.getElementById("userName").textContent = user.name || "Guest";

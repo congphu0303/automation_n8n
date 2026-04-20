@@ -32,15 +32,7 @@
         </div>
       </header>
 
-      <!-- Loading overlay (shown while validating auth) -->
-  <div id="loadingOverlay" class="fixed inset-0 bg-zinc-100 flex items-center justify-center z-50">
-    <div class="text-center">
-      <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
-      <p class="text-sm text-zinc-400">Loading...</p>
-    </div>
-  </div>
-
-  <!-- Content -->
+    <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
         <div class="max-w-2xl mx-auto">
 
@@ -52,22 +44,41 @@
           <!-- Form Card -->
           <div class="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
 
-            <div class="px-8 py-5 border-b border-zinc-100 bg-zinc-50">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <i class="fa-solid fa-calendar-days text-blue-600 text-lg"></i>
+            <!-- Skeleton Form (shown while loading) -->
+            <div id="formSkeleton" class="p-8 space-y-6">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="space-y-2">
+                  <div class="h-4 w-24 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 bg-zinc-100 rounded-xl"></div>
                 </div>
-                <div>
-                  <h3 class="font-semibold text-zinc-800">New Leave Application</h3>
-                  <p class="text-xs text-zinc-400 mt-0.5">
-                    <span class="text-yellow-600 font-medium">≤ 3 days:</span> Manager approval only ·
-                    <span class="text-red-600 font-medium">> 3 days:</span> Manager + HR approval
-                  </p>
+                <div class="space-y-2">
+                  <div class="h-4 w-16 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 bg-zinc-100 rounded-xl"></div>
                 </div>
               </div>
+              <div class="space-y-2">
+                <div class="h-4 w-32 bg-zinc-200 rounded animate-pulse"></div>
+                <div class="h-10 bg-zinc-100 rounded-xl"></div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div class="space-y-2">
+                  <div class="h-4 w-28 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 bg-zinc-100 rounded-xl"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-4 w-36 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 bg-zinc-100 rounded-xl"></div>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <div class="h-4 w-20 bg-zinc-200 rounded animate-pulse"></div>
+                <div class="h-24 bg-zinc-100 rounded-xl"></div>
+              </div>
+              <div class="h-10 bg-zinc-100 rounded-xl w-32"></div>
             </div>
 
-            <form id="leaveForm" class="p-8 space-y-6">
+            <!-- Real Form (hidden initially) -->
+            <form id="leaveForm" class="p-8 space-y-6 hidden">
               <!-- User Info (read-only, auto-filled) -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="space-y-2">
@@ -169,19 +180,25 @@
   </div>
 
   <script>
-    // Backend API URL - detect environment
-    const API_URL =
+    // Backend API Base URL - absolute để N8N có thể gọi
+    const BACKEND_BASE_URL =
       window.location.protocol === "file:" ||
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1"
-        ? "http://localhost:3001/api"
-        : "/api";
+        ? "http://localhost:3001"
+        : "https://approvehub.internalautomation.io.vn";
+    const API_URL = BACKEND_BASE_URL + "/api";
 
-    // N8N Webhook URL
-    const N8N_WEBHOOK_URL =
+    // N8N Webhook URLs
+    const N8N_LEAVE_REQUEST_WEBHOOK =
       window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
         ? "http://localhost:5678/webhook/leave-request"
         : "https://n8n.internalautomation.io.vn/webhook/leave-request";
+
+    const N8N_UPDATE_LEAVE_WEBHOOK =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5678/webhook/update-leave"
+        : "https://n8n.internalautomation.io.vn/webhook/update-leave";
 
     // ── Helper: clear session & redirect to login ──
     const clearSession = () => {
@@ -226,8 +243,9 @@
       };
       localStorage.setItem("user", JSON.stringify(user));
 
-      // ✅ Hiển thị UI (sau khi verify thành công)
-      document.getElementById("loadingOverlay").classList.add("hidden");
+      // Hide skeleton, show real form
+      document.getElementById("formSkeleton").classList.add("hidden");
+      document.getElementById("leaveForm").classList.remove("hidden");
 
       // User info
       document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
@@ -271,26 +289,99 @@
         // Lấy user info từ localStorage
         const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-        const res = await fetch(N8N_WEBHOOK_URL, {
+        // Kiểm tra mode: create hay update
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get("edit");
+        const isUpdate = !!editId;
+
+        // ── VALIDATION ──
+        const leaveDateInput = document.getElementById("leave_date");
+        const leaveDaysInput = document.getElementById("leave_days");
+        const reasonInput = document.getElementById("reason");
+
+        const leaveDate = new Date(leaveDateInput.value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Validate: ngày nghỉ phải >= hôm nay
+        if (leaveDate < today && !isUpdate) {
+          errorDiv.textContent = "Ngày nghỉ phải từ hôm nay trở đi";
+          errorDiv.classList.remove("hidden");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
+          return;
+        }
+
+        // Validate: số ngày phải > 0
+        const leaveDays = parseInt(leaveDaysInput.value);
+        if (!leaveDays || leaveDays <= 0) {
+          errorDiv.textContent = "Số ngày nghỉ phải lớn hơn 0";
+          errorDiv.classList.remove("hidden");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
+          return;
+        }
+
+        // Validate: số ngày không quá 365
+        if (leaveDays > 365) {
+          errorDiv.textContent = "Số ngày nghỉ không được vượt quá 365 ngày";
+          errorDiv.classList.remove("hidden");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
+          return;
+        }
+
+        // Validate: lý do không được để trống
+        if (!reasonInput.value.trim()) {
+          errorDiv.textContent = "Vui lòng nhập lý do nghỉ phép";
+          errorDiv.classList.remove("hidden");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
+          return;
+        }
+
+        // Validate: lý do phải có ít nhất 5 ký tự
+        if (reasonInput.value.trim().length < 5) {
+          errorDiv.textContent = "Lý do nghỉ phép phải có ít nhất 5 ký tự";
+          errorDiv.classList.remove("hidden");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
+          return;
+        }
+        // ── END VALIDATION ──
+
+        // Chọn webhook phù hợp
+        const webhookUrl = isUpdate ? N8N_UPDATE_LEAVE_WEBHOOK : N8N_LEAVE_REQUEST_WEBHOOK;
+
+        // Dữ liệu gửi đến N8N
+        const payload = {
+          // User info
+          employeeName: user.name || document.getElementById("employee_name").value,
+          employeeEmail: user.email || document.getElementById("employee_email").value,
+          department: user.department || document.getElementById("department").value,
+          // Leave data
+          leave_date: leaveDateInput.value,
+          leave_days: leaveDays,
+          reason: reasonInput.value,
+          // Token để N8N gọi Backend API
+          token: token,
+          // Backend URL (N8N sẽ gọi vào đây để lưu DB)
+          backendUrl: API_URL + "/leave"
+        };
+
+        // Nếu update, thêm leaveId
+        if (isUpdate) {
+          payload.leaveId = editId;
+        }
+
+        // GỬI TRỰC TIẾP ĐẾN N8N WEBHOOK (N8N là trung tâm)
+        const res = await fetch(webhookUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
+            "Authorization": `Bearer ${token}`  // N8N dùng token này để gọi Backend
           },
-          body: JSON.stringify({
-            // Event type để N8N phân biệt
-            event: "leave_request_created",
-            // Auth token để Backend verify
-            token: token,
-            // User info
-            employeeName: user.name || document.getElementById("employee_name").value,
-            employeeEmail: user.email || document.getElementById("employee_email").value,
-            department: user.department || document.getElementById("department").value,
-            // Leave data
-            leave_date: document.getElementById("leave_date").value,
-            leave_days: parseInt(document.getElementById("leave_days").value),
-            reason: document.getElementById("reason").value
-          }),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
@@ -298,16 +389,24 @@
           errorDiv.textContent = data.message || "Submit failed";
           errorDiv.classList.remove("hidden");
           btn.disabled = false;
-          btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
+          btn.innerHTML = isUpdate
+            ? '<i class="fa-solid fa-pen text-xs"></i> Update Request'
+            : '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';
           return;
         }
 
         const data = await res.json().catch(() => ({}));
-        successDiv.textContent = "Leave request submitted! A notification email has been sent to your manager.";
+        if (data.aiReviewPending) {
+          successDiv.innerHTML = `<i class="fa-solid fa-robot mr-1"></i>Đơn đã được gửi! AI đang xem xét để duyệt tự động. Bạn sẽ nhận email thông báo kết quả trong vài giây.`;
+        } else {
+          successDiv.textContent = isUpdate
+            ? "Leave request updated! Notification emails have been sent."
+            : "Leave request submitted! A notification email has been sent to your manager.";
+        }
         successDiv.classList.remove("hidden");
-        setTimeout(() => window.location.href = "index.html", 2000);
+        setTimeout(() => window.location.href = "index.html", 3000);
       } catch (err) {
-        errorDiv.textContent = "Cannot connect to server. Please check N8N webhook URL.";
+        errorDiv.textContent = "Cannot connect to server. Please try again.";
         errorDiv.classList.remove("hidden");
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> Submit Request';

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xác nhận phê duyệt - ApproveHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-slide-up {
+      animation: slideUp 0.5s ease-out;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    .btn {
+      transition: all 0.3s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
+
+  <div id="app" class="min-h-screen flex items-center justify-center p-4">
+    <!-- Loading State -->
+    <div id="loadingState" class="text-center text-white">
+      <div class="spinner mx-auto mb-4"></div>
+      <p class="text-lg">Đang tải thông tin...</p>
+    </div>
+
+    <!-- Main Card -->
+    <div id="mainCard" class="hidden bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-slide-up">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 text-center">
+        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-clipboard-list text-3xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold mb-2">Yêu cầu nghỉ phép</h1>
+        <p class="text-white/80 text-sm">Hệ thống ApproveHub - Low Code No Code</p>
+      </div>
+
+      <!-- Content -->
+      <div class="p-8">
+        <!-- Info Box -->
+        <div class="bg-zinc-50 rounded-2xl p-6 mb-6">
+          <div class="space-y-3">
+            <div class="flex justify-between items-center py-2 border-b border-zinc-200">
+              <span class="text-zinc-500 text-sm">Nhân viên</span>
+              <span id="employeeName" class="font-semibold text-zinc-800">-</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-zinc-200">
+              <span class="text-zinc-500 text-sm">Phòng ban</span>
+              <span id="department" class="font-semibold text-zinc-800">-</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-zinc-200">
+              <span class="text-zinc-500 text-sm">Ngày nghỉ</span>
+              <span id="leaveDate" class="font-semibold text-zinc-800">-</span>
+            </div>
+            <div class="flex justify-between items-center py-2">
+              <span class="text-zinc-500 text-sm">Số ngày</span>
+              <span id="leaveDays" class="font-semibold text-zinc-800">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reason Box -->
+        <div id="reasonBox" class="hidden bg-yellow-50 border-l-4 border-yellow-400 rounded-r-xl p-4 mb-6">
+          <p class="text-yellow-800 font-medium text-sm"><i class="fa-solid fa-info-circle mr-2"></i>Lý do:</p>
+          <p id="reason" class="text-yellow-700 mt-1 text-sm">-</p>
+        </div>
+
+        <!-- Buttons -->
+        <div id="buttonsContainer" class="flex gap-4">
+          <button id="approveBtn" onclick="handleAction('approve')" 
+            class="flex-1 py-4 px-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl btn flex items-center justify-center gap-2">
+            <i class="fa-solid fa-check text-lg"></i>
+            Duyệt đơn
+          </button>
+          <button id="rejectBtn" onclick="handleAction('reject')"
+            class="flex-1 py-4 px-6 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl btn flex items-center justify-center gap-2">
+            <i class="fa-solid fa-xmark text-lg"></i>
+            Từ chối
+          </button>
+        </div>
+
+        <!-- Processing State -->
+        <div id="processingState" class="hidden text-center py-8">
+          <div class="spinner mx-auto mb-4 border-t-green-500"></div>
+          <p class="text-zinc-600 font-medium">Đang xử lý yêu cầu...</p>
+          <p class="text-zinc-400 text-sm mt-2">Vui lòng chờ trong giây lát</p>
+        </div>
+
+        <!-- Result State -->
+        <div id="resultState" class="hidden text-center py-8">
+          <div id="resultIcon" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl"></div>
+          <h2 id="resultTitle" class="text-2xl font-bold text-zinc-800 mb-2"></h2>
+          <p id="resultMessage" class="text-zinc-600 mb-6"></p>
+          <button onclick="goBack()" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl btn">
+            <i class="fa-solid fa-arrow-left mr-2"></i>Quay về trang quản lý
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="hidden bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 text-center animate-slide-up">
+      <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fa-solid fa-exclamation-triangle text-red-500 text-4xl"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-zinc-800 mb-2">Có lỗi xảy ra</h2>
+      <p id="errorMessage" class="text-zinc-600 mb-6">Không thể tải thông tin đơn nghỉ phép</p>
+      <button onclick="goBack()" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl">
+        <i class="fa-solid fa-arrow-left mr-2"></i>Quay về
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // API Configuration
+    // Detect if running locally vs production
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.protocol === 'file:';
+    
+    const API_URL = isLocal ? 'http://localhost:3001/api' : '/api';
+
+    // Get query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const actionParam = urlParams.get('action');
+
+    // Elements
+    const loadingState = document.getElementById('loadingState');
+    const mainCard = document.getElementById('mainCard');
+    const errorState = document.getElementById('errorState');
+    const buttonsContainer = document.getElementById('buttonsContainer');
+    const processingState = document.getElementById('processingState');
+    const resultState = document.getElementById('resultState');
+
+    // Auto-submit if action is specified (with loading state)
+    if (actionParam === 'approve' || actionParam === 'reject') {
+      // Show loading state immediately
+      loadingState.classList.remove('hidden');
+      mainCard.classList.add('hidden');
+      handleAction(actionParam);
+    }
+
+    // Load approval info
+    async function loadApprovalInfo() {
+      if (!token) {
+        showError('Không tìm thấy mã xác thực. Vui lòng kiểm tra lại link.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/approval/token/${token}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          showError(data.message || 'Link không hợp lệ hoặc đã hết hạn.');
+          return;
+        }
+
+        // Update UI
+        document.getElementById('employeeName').textContent = data.employee_name || '-';
+        document.getElementById('department').textContent = data.department || '-';
+        document.getElementById('leaveDate').textContent = data.leave_date ? new Date(data.leave_date).toLocaleDateString('vi-VN') : '-';
+        document.getElementById('leaveDays').textContent = data.leave_days ? `${data.leave_days} ngày` : '-';
+
+        if (data.reason) {
+          document.getElementById('reasonBox').classList.remove('hidden');
+          document.getElementById('reason').textContent = data.reason;
+        }
+
+        // Check if already processed
+        const myStatus = data.approvalType === 'manager' ? data.manager_status : data.hr_status;
+        if (myStatus !== 'pending') {
+          showResult(myStatus === 'approved' ? 'approve' : 'reject', `Bạn đã ${myStatus === 'approved' ? 'duyệt' : 'từ chối'} đơn này trước đó.`);
+          return;
+        }
+
+        // Show main card
+        loadingState.classList.add('hidden');
+        mainCard.classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error loading approval info:', error);
+        showError('Không thể kết nối đến server. Vui lòng thử lại sau.');
+      }
+    }
+
+    // Handle action
+    async function handleAction(action) {
+      if (!token) {
+        showError('Không tìm thấy mã xác thực.');
+        return;
+      }
+
+      // Show processing state
+      if (!actionParam) {
+        buttonsContainer.classList.add('hidden');
+        processingState.classList.remove('hidden');
+      }
+
+      try {
+        // Determine endpoint based on token type
+        const isHR = urlParams.get('hr') === 'true';
+        const endpoint = isHR ? `${API_URL}/approval/hr` : `${API_URL}/approval/manager`;
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, action })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showResult(action, data.message || 'Xử lý thành công!');
+        } else {
+          showError(data.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
+        }
+
+      } catch (error) {
+        console.error('Error processing action:', error);
+        showError('Không thể kết nối đến server. Vui lòng thử lại sau.');
+      }
+    }
+
+    // Show result
+    function showResult(action, message) {
+      loadingState.classList.add('hidden');
+      mainCard.classList.remove('hidden');
+      processingState.classList.add('hidden');
+      resultState.classList.remove('hidden');
+
+      const icon = document.getElementById('resultIcon');
+      const title = document.getElementById('resultTitle');
+      const msg = document.getElementById('resultMessage');
+
+      if (action === 'approve') {
+        icon.className = 'w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl';
+        icon.innerHTML = '<i class="fa-solid fa-check text-green-500 text-4xl"></i>';
+        title.textContent = 'Duyệt thành công!';
+        msg.textContent = message || 'Đơn nghỉ phép đã được duyệt.';
+      } else {
+        icon.className = 'w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl';
+        icon.innerHTML = '<i class="fa-solid fa-xmark text-red-500 text-4xl"></i>';
+        title.textContent = 'Đã từ chối';
+        msg.textContent = message || 'Đơn nghỉ phép đã bị từ chối.';
+      }
+    }
+
+    // Show error
+    function showError(message) {
+      loadingState.classList.add('hidden');
+      mainCard.classList.add('hidden');
+      errorState.classList.remove('hidden');
+      document.getElementById('errorMessage').textContent = message;
+    }
+
+    // Go back
+    function goBack() {
+      const baseUrl = isLocal ? 'http://localhost:3000' : '';
+      window.location.href = `${baseUrl}/approvals.html`;
+    }
+
+    // Initialize
+    if (!actionParam) {
+      loadApprovalInfo();
+    }
+  </script>
+</body>
+</html>

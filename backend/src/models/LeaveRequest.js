@@ -122,6 +122,10 @@ const leaveRequestSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    cancelReason: {
+      type: String,
+      default: null,
+    },
 
     // ─── Return Early ───
     actualReturnDate: {
@@ -132,6 +136,24 @@ const leaveRequestSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+
+    // ─── AI Auto-Approve ───
+    autoApproved: {
+      type: Boolean,
+      default: false,
+    },
+    aiDecision: {
+      type: String,
+      default: null,
+    },
+    aiReason: {
+      type: String,
+      default: null,
+    },
+    approvedBy: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -139,3 +161,10 @@ const leaveRequestSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("LeaveRequest", leaveRequestSchema);
+
+// Compound indexes cho các truy vấn phổ biến
+leaveRequestSchema.index({ employeeId: 1, createdAt: -1 });
+leaveRequestSchema.index({ department: 1, manager_status: 1 });
+leaveRequestSchema.index({ managerApprovalToken: 1 });
+leaveRequestSchema.index({ hrApprovalToken: 1 });
+leaveRequestSchema.index({ status: 1, manager_status: 1, hr_status: 1 });

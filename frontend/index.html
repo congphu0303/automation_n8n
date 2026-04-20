@@ -33,61 +33,164 @@
         </div>
       </header>
 
-      <!-- Loading overlay -->
-      <div id="loadingOverlay" class="fixed inset-0 bg-zinc-100 flex items-center justify-center z-50">
-        <div class="text-center">
-          <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>
-          <p class="text-sm text-zinc-400">Loading...</p>
-        </div>
-      </div>
-
       <!-- Content -->
       <main class="flex-1 overflow-auto p-8">
-        <div class="max-w-6xl mx-auto">
-          <h2 class="text-2xl font-bold text-zinc-900" id="welcomeTitle">Welcome back!</h2>
-          <p class="text-zinc-500 mt-1 text-sm">Here is an overview of your requests.</p>
+        <div class="max-w-7xl mx-auto">
 
-          <!-- Stat Cards -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
-            <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
-              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Total Requests</p>
-              <p class="text-3xl font-bold text-zinc-900 mt-2" id="statTotal">0</p>
-              <p class="text-xs text-zinc-500 mt-1">All time</p>
+          <!-- ── Hero / Welcome ── -->
+          <div class="mb-8">
+            <h2 class="text-3xl font-bold text-zinc-900" id="welcomeTitle">Welcome back!</h2>
+            <p class="text-zinc-500 mt-2 text-sm">Here's an overview of your leave requests and quick actions.</p>
+          </div>
+
+          <!-- ── Quick Actions ── -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+            <a href="leave.html" class="group bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                  <i class="fa-solid fa-calendar-plus text-white text-xl"></i>
+                </div>
+                <div>
+                  <h3 class="text-white font-semibold text-lg">Create New Request</h3>
+                  <p class="text-blue-100 text-sm">Submit a leave application</p>
+                </div>
+              </div>
+            </a>
+
+            <a href="my-leaves.html" class="group bg-gradient-to-br from-zinc-600 to-zinc-700 rounded-2xl p-6 shadow-lg hover:shadow-xl hover:from-zinc-700 hover:to-zinc-800 transition-all duration-200">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                  <i class="fa-solid fa-folder-open text-white text-xl"></i>
+                </div>
+                <div>
+                  <h3 class="text-white font-semibold text-lg">My Leave Requests</h3>
+                  <p class="text-zinc-200 text-sm">View and manage all requests</p>
+                </div>
+              </div>
+            </a>
+
+            <a href="settings.html" id="settingsLink" class="group bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-lg hover:shadow-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-200 hidden">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                  <i class="fa-solid fa-gears text-white text-xl"></i>
+                </div>
+                <div>
+                  <h3 class="text-white font-semibold text-lg">System Settings</h3>
+                  <p class="text-purple-100 text-sm">Manage users & email config</p>
+                </div>
+              </div>
+            </a>
+          </div>
+
+          <!-- ── Stats Overview ── -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10" id="statsContainer">
+            <!-- Skeleton loading -->
+            <div class="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="space-y-2">
+                  <div class="h-3 w-24 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 w-16 bg-zinc-200 rounded animate-pulse"></div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-zinc-100"></div>
+              </div>
+              <div class="h-3 w-32 bg-zinc-100 rounded mt-3"></div>
             </div>
-            <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
-              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Pending</p>
-              <p class="text-3xl font-bold text-yellow-500 mt-2" id="statPending">0</p>
-              <p class="text-xs text-zinc-500 mt-1">Waiting approval</p>
+            <div class="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="space-y-2">
+                  <div class="h-3 w-28 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 w-12 bg-zinc-200 rounded animate-pulse"></div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-zinc-100"></div>
+              </div>
+              <div class="h-3 w-40 bg-zinc-100 rounded mt-3"></div>
             </div>
-            <div class="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
-              <p class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Approved</p>
-              <p class="text-3xl font-bold text-green-500 mt-2" id="statApproved">0</p>
-              <p class="text-xs text-zinc-500 mt-1">This month</p>
+            <div class="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="space-y-2">
+                  <div class="h-3 w-20 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 w-12 bg-zinc-200 rounded animate-pulse"></div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-zinc-100"></div>
+              </div>
+              <div class="h-3 w-36 bg-zinc-100 rounded mt-3"></div>
+            </div>
+            <div class="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="space-y-2">
+                  <div class="h-3 w-24 bg-zinc-200 rounded animate-pulse"></div>
+                  <div class="h-10 w-12 bg-zinc-200 rounded animate-pulse"></div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-zinc-100"></div>
+              </div>
+              <div class="h-3 w-32 bg-zinc-100 rounded mt-3"></div>
             </div>
           </div>
 
-          <!-- Recent Requests Table -->
-          <div class="mt-8 bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
-              <h3 class="font-semibold text-zinc-800">Recent Requests</h3>
-              <a href="leave.html" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                <i class="fa-solid fa-plus mr-1"></i> New Request
-              </a>
+          <!-- ── Recent Activity ── -->
+          <div class="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-5 border-b border-zinc-100 flex items-center justify-between">
+              <div class="space-y-2">
+                <div class="h-5 w-40 bg-zinc-200 rounded animate-pulse"></div>
+                <div class="h-3 w-56 bg-zinc-100 rounded"></div>
+              </div>
+              <div class="h-8 w-24 bg-zinc-100 rounded animate-pulse"></div>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead class="bg-zinc-50 border-b border-zinc-100">
-                  <tr id="tableHeaders">
-                  </tr>
-                </thead>
-                <tbody id="requestsTable" class="divide-y divide-zinc-100">
-                  <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-zinc-400 text-sm">Loading...</td>
-                  </tr>
-                </tbody>
-              </table>
+
+            <!-- Activity List (Skeleton) -->
+            <div id="recentActivitySkeleton" class="p-6 space-y-3">
+              <div class="bg-zinc-50 rounded-xl p-4 border border-zinc-100">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 space-y-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-zinc-200 animate-pulse"></div>
+                      <div class="space-y-2">
+                        <div class="h-4 w-32 bg-zinc-200 rounded animate-pulse"></div>
+                        <div class="h-3 w-48 bg-zinc-100 rounded"></div>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <div class="h-6 w-20 bg-zinc-200 rounded-full animate-pulse"></div>
+                      <div class="h-6 w-24 bg-zinc-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="h-4 w-64 bg-zinc-100 rounded"></div>
+                      <div class="h-4 w-48 bg-zinc-100 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-zinc-50 rounded-xl p-4 border border-zinc-100">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 space-y-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-zinc-200 animate-pulse"></div>
+                      <div class="space-y-2">
+                        <div class="h-4 w-36 bg-zinc-200 rounded animate-pulse"></div>
+                        <div class="h-3 w-40 bg-zinc-100 rounded"></div>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <div class="h-6 w-20 bg-zinc-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="h-4 w-56 bg-zinc-100 rounded"></div>
+                      <div class="h-4 w-40 bg-zinc-100 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Real Data (hidden initially) -->
+            <div id="recentActivity" class="p-6 space-y-3 hidden"></div>
+          </div>
+                <i class="fa-solid fa-spinner fa-spin text-zinc-400 text-xl"></i>
+                <span class="ml-3 text-zinc-500 text-sm">Loading recent activity...</span>
+              </div>
             </div>
           </div>
+
         </div>
       </main>
 
@@ -113,20 +216,28 @@
     const token = localStorage.getItem("token");
 
     const init = async () => {
-      document.getElementById("loadingOverlay").classList.add("hidden");
-
-      if (!token) { clearSession(); return; }
+      if (!token) {
+        clearSession();
+        return;
+      }
 
       let me;
       try {
         const res = await fetch(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) { clearSession(); return; }
+        if (!res.ok) {
+          clearSession();
+          return;
+        }
         me = await res.json();
-      } catch { clearSession(); return; }
+      } catch (err) {
+        console.error("[Index] Auth error:", err);
+        clearSession();
+        return;
+      }
 
-      // Store fresh user data
+      // ✅ Token valid - store user
       const user = {
         id: me._id,
         name: me.name,
@@ -147,30 +258,35 @@
       // Init shared sidebar — auto-detects active page and role from localStorage
       initSidebar();
 
+      // ── Show Settings link for HR only ──
+      if (user.role === "hr") {
+        document.getElementById("settingsLink").classList.remove("hidden");
+      }
+
       // ── Status badges ──
       const statusBadge = (status) => {
         const map = {
           pending:   { bg: "bg-yellow-100", text: "text-yellow-700", label: "Pending" },
           approved:  { bg: "bg-green-100",  text: "text-green-700",  label: "Approved" },
           rejected:  { bg: "bg-red-100",    text: "text-red-700",    label: "Rejected" },
-          skipped:   { bg: "bg-zinc-100",   text: "text-zinc-500",   label: "Skipped" },
+          cancelled: { bg: "bg-zinc-100",  text: "text-zinc-500",   label: "Cancelled" },
         };
-        const s = map[status] || map.pending;
+        const s = map[status] || { bg: "bg-zinc-100", text: "text-zinc-500", label: status || "Unknown" };
         return `<span class="px-2 py-1 text-xs font-medium rounded-full ${s.bg} ${s.text}">${s.label}</span>`;
       };
 
-      const approvalBadge = (status) => {
-        if (!status || status === "skipped") return '<span class="text-zinc-300 text-xs">—</span>';
-        return statusBadge(status);
-      };
-
-      // ── Load requests ──
+      // ── Load stats & recent activity ──
       try {
         const res = await fetch(`${API_URL}/leave`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
 
+        // Hide skeleton, show real data
+        document.getElementById("recentActivitySkeleton").classList.add("hidden");
+        document.getElementById("recentActivity").classList.remove("hidden");
+
+        // Stats
         const now = new Date();
         const thisMonth = now.getMonth();
         const thisYear = now.getFullYear();
@@ -182,52 +298,74 @@
           const approvedAt = new Date(r.updatedAt);
           return approvedAt.getMonth() === thisMonth && approvedAt.getFullYear() === thisYear;
         }).length;
+        document.getElementById("statRejected").textContent = data.filter(r => r.status === "rejected").length;
 
-        const tbody = document.getElementById("requestsTable");
-        const theadRow = document.getElementById("tableHeaders");
-        const isManagerOrHR = user.role === "manager" || user.role === "hr";
+        // Recent Activity Cards (last 5)
+        const recentContainer = document.getElementById("recentActivity");
+        const recentLeaves = data
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 5);
 
-        // ── Build headers based on role ──
-        if (isManagerOrHR) {
-          theadRow.innerHTML = `
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Employee</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Date</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Days</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Reason</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Manager</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">HR</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Status</th>
+        if (recentLeaves.length === 0) {
+          recentContainer.innerHTML = `
+            <div class="text-center py-12 bg-zinc-50 rounded-xl border-2 border-dashed border-zinc-200">
+              <i class="fa-regular fa-calendar text-4xl text-zinc-300 mb-3"></i>
+              <p class="text-zinc-500 font-medium">No leave requests yet</p>
+              <a href="leave.html" class="text-blue-600 text-sm mt-2 inline-block hover:underline">Create your first request →</a>
+            </div>
           `;
         } else {
-          theadRow.innerHTML = `
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Date</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Days</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Reason</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Manager</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">HR</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Status</th>
-          `;
+          recentContainer.innerHTML = recentLeaves.map(r => {
+            const leaveId = r._id || r.id;
+            const dateStr = new Date(r.leave_date).toLocaleDateString('vi-VN');
+            const statusColor = {
+              pending:   "border-l-yellow-500 bg-yellow-50/50",
+              approved:  "border-l-green-500 bg-green-50/50",
+              rejected:  "border-l-red-500 bg-red-50/50",
+              cancelled: "border-l-zinc-400 bg-zinc-50/50",
+            }[r.status] || "border-l-zinc-300 bg-white";
+
+            return `
+              <div class="group flex items-center justify-between p-4 rounded-xl border border-zinc-200 ${statusColor} hover:shadow-md transition-all">
+                <div class="flex items-center gap-4 flex-1 min-w-0">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0
+                    ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                      r.status === 'approved' ? 'bg-green-100 text-green-600' :
+                      r.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                      'bg-zinc-100 text-zinc-500'}">
+                    <i class="fa-solid ${r.status === 'pending' ? 'fa-clock' :
+                                      r.status === 'approved' ? 'fa-check' :
+                                      r.status === 'rejected' ? 'fa-xmark' : 'fa-ban'}"></i>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <p class="font-medium text-zinc-800 truncate">${r.reason || "Leave request"}</p>
+                      ${statusBadge(r.status)}
+                    </div>
+                    <p class="text-xs text-zinc-500 mt-0.5">
+                      ${dateStr} · ${r.leave_days} day${r.leave_days > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                <a href="my-leaves.html" class="ml-4 text-blue-600 hover:text-blue-700 text-sm font-medium shrink-0">
+                  View Details <i class="fa-solid fa-arrow-right"></i>
+                </a>
+              </div>
+            `;
+          }).join("");
         }
 
-        if (data.length === 0) {
-          const colCount = isManagerOrHR ? 7 : 6;
-          tbody.innerHTML = `<tr><td colspan="${colCount}" class="px-6 py-8 text-center text-zinc-400 text-sm">No requests yet. <a href="leave.html" class="text-blue-600 hover:underline">Create one</a></td></tr>`;
-          return;
-        }
-        tbody.innerHTML = data.map(r => `
-          <tr class="hover:bg-zinc-50">
-            ${isManagerOrHR ? `<td class="px-6 py-4 text-sm font-medium text-zinc-800">${r.employee_name || "—"}</td>` : ""}
-            <td class="px-6 py-4 text-sm text-zinc-700">${new Date(r.leave_date).toLocaleDateString()}</td>
-            <td class="px-6 py-4 text-sm text-zinc-700">${r.leave_days} day${r.leave_days > 1 ? "s" : ""}</td>
-            <td class="px-6 py-4 text-sm text-zinc-500 max-w-xs truncate">${r.reason}</td>
-            <td class="px-6 py-4">${approvalBadge(r.manager_status)}</td>
-            <td class="px-6 py-4">${approvalBadge(r.hr_status)}</td>
-            <td class="px-6 py-4">${statusBadge(r.status)}</td>
-          </tr>
-        `).join("");
       } catch (err) {
-        console.error("Error loading requests:", err);
+        console.error("Error loading dashboard:", err);
+        document.getElementById("recentActivity").innerHTML = `
+          <div class="text-center py-12 text-red-500">
+            <i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i>
+            <p>Failed to load activity. <a href="my-leaves.html" class="text-blue-600 hover:underline">View all requests</a></p>
+          </div>
+        `;
       }
+
+      console.log("[Index] Dashboard loaded");
     };
 
     init();
