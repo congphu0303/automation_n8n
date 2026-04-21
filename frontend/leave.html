@@ -211,16 +211,27 @@
       window.location.href = "login.html";
     };
 
-    // ── INIT: Verify auth BEFORE showing form ──
+    // ── INIT: Read cached user first (sync, like book-room.html), then refresh from API ──
     const init = async () => {
-      // 1. Check token exists
+      // 1. Show skeleton immediately, read cached user to avoid blank form
+      let user = JSON.parse(localStorage.getItem("user") || "{}");
+      const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
+
+      // Fill form with cached data right away (no blocking)
+      document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = user.name || "";
+      document.getElementById("userRole").textContent = roleLabels[user.role] || "";
+      document.getElementById("employee_name").value = user.name || "";
+      document.getElementById("employee_email").value = user.email || "";
+      document.getElementById("department").value = user.department || "";
+
+      // 2. Verify token
       if (!token) {
         clearSession();
         return;
       }
 
-      // 2. Get user from cache
-      let user;
+      // 3. Refresh user from API (background, don't block form)
       try {
         const res = await fetch(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -238,28 +249,24 @@
           role: me.role,
         };
         localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("sidebar_user_cache", JSON.stringify(user));
+        localStorage.setItem("sidebar_user_expiry", String(Date.now() + 60 * 60 * 1000));
+        // Update UI with fresh data
+        document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+        document.getElementById("userName").textContent = user.name || "";
+        document.getElementById("userRole").textContent = roleLabels[user.role] || "";
+        document.getElementById("employee_name").value = user.name || "";
+        document.getElementById("employee_email").value = user.email || "";
+        document.getElementById("department").value = user.department || "";
       } catch {
-        clearSession();
-        return;
+        // Network error — stick with cached data
       }
 
-      // 3. NOW show form (after auth is verified)
+      // 4. Show form + init sidebar
       document.getElementById("formSkeleton").classList.add("hidden");
       document.getElementById("leaveForm").classList.remove("hidden");
-
-      // 4. Fill user info
-      document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-      document.getElementById("userName").textContent = user.name || "";
-      const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
-      document.getElementById("userRole").textContent = roleLabels[user.role] || "";
-
-      // Fill form fields
-      document.getElementById("employee_name").value = user.name || "";
-      document.getElementById("employee_email").value = user.email || "";
-      document.getElementById("department").value = user.department || "";
-
-      // 5. Init sidebar UI with user object
       await initSidebar({ user });
+    };
 
       console.log("[Leave] Auth verified, UI ready");
     };

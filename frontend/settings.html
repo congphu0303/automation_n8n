@@ -194,6 +194,8 @@
     </div>
   </div>
 
+  <script src="sidebar.js"></script>
+
   <script>
     const API_URL =
       window.location.protocol === "file:" ||
@@ -203,10 +205,56 @@
         : "/api";
     const token = localStorage.getItem("token");
 
+    const clearSession = () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    };
+
     // ── Auth guard: only HR can access Settings ──
     ;(async () => {
-      const user = await initSidebar();
-      if (!user) return;
+      // 1. Read cached user immediately (sync, no blocking)
+      let user = JSON.parse(localStorage.getItem("user") || "{}");
+
+      // Show cached user info right away
+      document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = user.name || "HR Admin";
+
+      // 2. Verify token
+      if (!token) {
+        clearSession();
+        return;
+      }
+
+      // 3. Refresh user from API (background)
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          clearSession();
+          return;
+        }
+        const me = await res.json();
+        user = {
+          id: me._id,
+          name: me.name,
+          email: me.email,
+          department: me.department,
+          role: me.role,
+        };
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("sidebar_user_cache", JSON.stringify(user));
+        localStorage.setItem("sidebar_user_expiry", String(Date.now() + 60 * 60 * 1000));
+        // Update UI with fresh data
+        document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+        document.getElementById("userName").textContent = user.name || "HR Admin";
+      } catch {
+        // Network error — stick with cached user
+      }
+
+      // 4. Init sidebar with user
+      await initSidebar({ user });
 
       // Chỉ HR mới được truy cập
       if (user.role !== "hr") {
@@ -225,12 +273,6 @@
 
       console.log("[Settings] Auth verified - HR access granted");
     })();
-
-    const clearSession = () => {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "login.html";
-    };
 
     // ── Tabs ──
     document.getElementById("tabUsers").addEventListener("click", () => {
@@ -385,6 +427,5 @@
       }
     }
   </script>
-  <script src="sidebar.js"></script>
 </body>
 </html>

@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="layout.css" />
-  <link rel="stylesheet" href="layout.css" />
 </head>
 <body class="bg-zinc-100 font-sans">
 
@@ -187,11 +186,6 @@
             <!-- Real Data (hidden initially) -->
             <div id="recentActivity" class="p-6 space-y-3 hidden"></div>
           </div>
-                <i class="fa-solid fa-spinner fa-spin text-zinc-400 text-xl"></i>
-                <span class="ml-3 text-zinc-500 text-sm">Loading recent activity...</span>
-              </div>
-            </div>
-          </div>
 
         </div>
       </main>
@@ -208,6 +202,8 @@
         ? "http://localhost:3001/api"
         : "/api";
 
+    const token = localStorage.getItem("token");
+
     const clearSession = () => {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -215,15 +211,51 @@
     };
 
     const init = async () => {
-      // Sidebar init → auth cache → fade-in. User đã có sẵn trong window._sidebarUser
-      const user = await initSidebar();
-
-      // Header user badge (đã có sẵn từ sidebar cache)
-      document.getElementById("avatar").textContent = (user?.name || "?").slice(0, 2).toUpperCase();
-      document.getElementById("userName").textContent = user?.name || "";
+      // 1. Read cached user immediately (sync, no blocking)
+      let user = JSON.parse(localStorage.getItem("user") || "{}");
       const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
-      document.getElementById("userRole").textContent = roleLabels[user?.role] || user?.role || "";
-      document.getElementById("welcomeTitle").textContent = `Welcome back, ${user?.name || "User"}!`;
+
+      // Show cached user info right away
+      document.getElementById("avatar").textContent = (user.name || "?").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = user.name || "";
+      document.getElementById("userRole").textContent = roleLabels[user.role] || user.role || "";
+      document.getElementById("welcomeTitle").textContent = `Welcome back, ${user.name || "User"}!`;
+
+      // 2. Verify token
+      if (!token) {
+        clearSession();
+        return;
+      }
+
+      // 3. Init sidebar with cached user immediately
+      await initSidebar({ user });
+
+      // 4. Refresh user from API in background (non-blocking)
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          clearSession();
+          return;
+        }
+        const me = await res.json();
+        user = {
+          id: me._id,
+          name: me.name,
+          email: me.email,
+          department: me.department,
+          role: me.role,
+        };
+        localStorage.setItem("user", JSON.stringify(user));
+        // Update header with fresh data
+        document.getElementById("avatar").textContent = (user.name || "?").slice(0, 2).toUpperCase();
+        document.getElementById("userName").textContent = user.name || "";
+        document.getElementById("userRole").textContent = roleLabels[user.role] || user.role || "";
+        document.getElementById("welcomeTitle").textContent = `Welcome back, ${user.name || "User"}!`;
+      } catch {
+        // Network error — stick with cached user
+      }
 
       // ── Status badges ──
       const statusBadge = (status) => {

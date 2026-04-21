@@ -163,10 +163,14 @@
     const approvalToken = urlParams.get("token");
     const token = localStorage.getItem("token");
 
-    // ─── HELPERS ───
-
     // ─── GLOBAL STATE ───
     let userRole = "";
+
+    // ─── READ CACHED USER SYNC FIRST (like book-room.html) ───
+    // This ensures user is available IMMEDIATELY without waiting for API
+    const cachedUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const cachedRole = cachedUser.role || "";
+    userRole = cachedRole;
 
     // ─── DEFINE FUNCTIONS FIRST (before calling) ───
     const statusBadge = (status) => {
@@ -555,17 +559,41 @@
       });
     });
 
-    // ─── INITIALIZATION (cache-first via sidebar.js) ───
-    // Ensure userRole is set BEFORE any async operations
+    // ─── INITIALIZATION (cache-first, then background refresh) ───
     const initPage = async () => {
-      // 1. Get user first (cache-first via sidebar)
-      const user = await getCachedUser();
-      if (!user) return;
+      // 1. Use cached user immediately (already read above as cachedUser)
+      const user = cachedUser;
+      userRole = user.role || cachedRole;
 
-      // 2. Set userRole IMMEDIATELY before anything else
-      userRole = user.role;
+      // 2. Force refresh from API in background (don't block UI)
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          clearSession();
+          return;
+        }
+        const me = await res.json();
+        const freshUser = {
+          id: me._id,
+          name: me.name,
+          email: me.email,
+          department: me.department,
+          role: me.role,
+        };
+        // Update state and caches with fresh data
+        userRole = freshUser.role;
+        localStorage.setItem("user", JSON.stringify(freshUser));
+        localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(freshUser));
+        localStorage.setItem(AUTH_CACHE_EXPIRY_KEY, String(Date.now() + AUTH_CACHE_TTL_MS));
+        // Update header with fresh name/role if different
+        document.getElementById("userRole").textContent = userRole === "hr" ? "HR" : "Manager";
+      } catch {
+        // Network error — stick with cached user (already set above)
+      }
 
-      // Check permission
+      // 3. Check permission (using userRole already set above)
       if (userRole !== "manager" && userRole !== "hr") {
         document.getElementById("listView").innerHTML = `
           <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
@@ -578,15 +606,15 @@
         return;
       }
 
-      // 3. Init sidebar UI with user object (avoids double auth call)
-      await initSidebar({ user });
+      // 4. Init sidebar UI with user object (avoids double auth call)
+      await initSidebar({ user: { ...user, role: userRole } });
 
       document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
       document.getElementById("userName").textContent = user.name || "";
       document.getElementById("userRole").textContent = userRole === "hr" ? "HR" : "Manager";
       document.getElementById("pageTitle").textContent = userRole === "hr" ? "HR Approvals" : "Manager Approvals";
 
-      // 4. Load data AFTER userRole is guaranteed to be set
+      // 5. Load data
       if (approvalToken) {
         document.getElementById("listView").classList.add("hidden");
         await loadTokenRequest(approvalToken);

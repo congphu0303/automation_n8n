@@ -589,18 +589,51 @@
       });
     });
 
-    // Init - sidebar.js handles auth cache, user is in window._sidebarUser
+    // Init - read cached user first (sync, like book-room.html), then refresh from API
     (async () => {
-      const user = await initSidebar();
-      if (!user) return;
+      // 1. Use cached user immediately (no blocking)
+      currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-      currentUser = user;
-      document.getElementById("avatar").textContent = (user.name || "").slice(0, 2).toUpperCase();
-      document.getElementById("userName").textContent = user.name || "";
-      document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : user.role === "manager" ? "Quản lý" : "Nhân viên";
-
-      // Hide loading
+      document.getElementById("avatar").textContent = (currentUser.name || "").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = currentUser.name || "";
+      document.getElementById("userRole").textContent =
+        currentUser.role === "hr" ? "HR" :
+        currentUser.role === "manager" ? "Quản lý" : "Nhân viên";
       document.getElementById("loadingOverlay").classList.add("hidden");
+
+      // Init sidebar with cached user immediately
+      await initSidebar({ user: currentUser });
+
+      // 2. Refresh user from API in background (non-blocking)
+      let user = currentUser;
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          clearSession();
+          return;
+        }
+        const me = await res.json();
+        user = {
+          id: me._id,
+          name: me.name,
+          email: me.email,
+          department: me.department,
+          role: me.role,
+        };
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("sidebar_user_cache", JSON.stringify(user));
+        localStorage.setItem("sidebar_user_expiry", String(Date.now() + 60 * 60 * 1000));
+        currentUser = user;
+        // Update header with fresh data
+        document.getElementById("userName").textContent = user.name || "";
+        document.getElementById("userRole").textContent =
+          user.role === "hr" ? "HR" :
+          user.role === "manager" ? "Quản lý" : "Nhân viên";
+      } catch {
+        // Network error — stick with cached user
+      }
 
       await loadLeaves();
     })();
