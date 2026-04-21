@@ -108,19 +108,22 @@ const generateApprovalToken = (approverEmail, type) => {
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
 };
 
-// Decode approval token
+// Decode approval token — an toàn, luôn trả về null thay vì throw
 const decodeApprovalToken = (token) => {
+  if (!token || typeof token !== "string") return null;
   try {
-    const payload = JSON.parse(Buffer.from(token, "base64url").toString("utf8"));
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const payload = JSON.parse(decoded);
+    if (!payload.r || !payload.t) return null; // thiếu required fields
     return {
       randomPart: payload.r,
       approverEmail: payload.e,
-      type: payload.t, // 'manager' | 'hr'
+      type: payload.t,
       expiresAt: new Date(payload.exp),
       isExpired: new Date() > new Date(payload.exp),
     };
   } catch {
-    return null;
+    return null; // token không phải format mới → sẽ dùng exact match (legacy)
   }
 };
 
@@ -920,8 +923,8 @@ app.post("/api/approval/webhook-callback", async (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/approval/manager - Manager duyệt (được gọi từ N8N webhook hoặc frontend)
-// Xác thực approver email qua JWT token
+// POST /api/approval/manager - Manager duyệt
+// Xác thực: tìm đơn bằng exact token, verify type và approver email
 app.post("/api/approval/manager", async (req, res) => {
   try {
     const { token, action, approverEmail } = req.body;
@@ -930,43 +933,52 @@ app.post("/api/approval/manager", async (req, res) => {
       return res.status(400).json({ message: "Invalid action" });
     }
 
-    // Decode và verify token
+    // Decode token để lấy type + approver email
     const tokenInfo = decodeApprovalToken(token);
-    if (!tokenInfo) {
-      return res.status(400).json({ message: "Invalid token format" });
-    }
+    const isNewToken = !!tokenInfo;
 
-    if (tokenInfo.isExpired) {
-      return res.status(410).json({ message: "Link đã hết hạn. Vui lòng yêu cầu nhân viên gửi lại đơn." });
-    }
-
-    if (tokenInfo.type !== "manager") {
-      return res.status(400).json({ message: "Token không phải dành cho Manager" });
-    }
-
-    // Tìm đơn bằng random part của token (prefix)
-    const randomPart = tokenInfo.randomPart;
-    const request = await LeaveRequest.findOne({
-      managerApprovalToken: { $regex: `^${randomPart}` },
+    // Tìm đơn bằng exact token (luôn dùng exact match — an toàn cho cả legacy và new token)
+    let leave = await LeaveRequest.findOne({
+      managerApprovalToken: token,
       manager_status: "pending",
     });
 
-    if (!request) {
-      // Không tìm được bằng prefix → thử exact match (legacy)
-      const exact = await LeaveRequest.findOne({ managerApprovalToken: token, manager_status: "pending" });
-      if (!exact) {
-        return res.status(404).json({ message: "Invalid token hoặc đơn đã được xử lý" });
-      }
-      // Token cũ — cho phép nhưng cảnh báo
-      console.warn(`[Approval] Legacy manager token used for request ${exact._id}`);
+    // Nếu dùng new token mà không tìm thấy → thử prefix match (để tìm đơn đã được tạo với new token)
+    if (isNewToken && !leave) {
+      leave = await LeaveRequest.findOne({
+        managerApprovalToken: { $regex: `^${tokenInfo.randomPart}` },
+        manager_status: "pending",
+      });
     }
 
-    const leave = exact || request;
+    if (!leave) {
+      // Kiểm tra đơn có tồn tại nhưng đã xử lý chưa
+      const existing = await LeaveRequest.findOne({ managerApprovalToken: token });
+      if (existing && existing.manager_status !== "pending") {
+        return res.status(400).json({ message: "Đơn đã được xử lý trước đó" });
+      }
+      return res.status(404).json({ message: "Không tìm thấy đơn nghỉ phép" });
+    }
 
-    // Xác thực approver email — nếu có approverEmail được truyền vào, phải khớp
-    if (approverEmail) {
-      const expectedEmail = leave.managerApproverEmail || leave.manager_email;
-      if (approverEmail.toLowerCase() !== expectedEmail?.toLowerCase()) {
+    // Verify: new token phải là type manager
+    if (isNewToken && tokenInfo.type !== "manager") {
+      return res.status(400).json({ message: "Token không phải dành cho Manager" });
+    }
+
+    // Verify: token chưa hết hạn
+    if (isNewToken && tokenInfo.isExpired) {
+      return res.status(410).json({ message: "Link đã hết hạn. Vui lòng yêu cầu nhân viên gửi lại đơn." });
+    }
+
+    // Xác thực approver email — trong new token đã có sẵn, hoặc truyền từ frontend
+    if (isNewToken && tokenInfo.approverEmail) {
+      const expected = leave.managerApproverEmail || leave.manager_email;
+      if (tokenInfo.approverEmail.toLowerCase() !== expected?.toLowerCase()) {
+        return res.status(403).json({ message: "Bạn không có quyền duyệt đơn này" });
+      }
+    } else if (approverEmail) {
+      const expected = leave.managerApproverEmail || leave.manager_email;
+      if (approverEmail.toLowerCase() !== expected?.toLowerCase()) {
         return res.status(403).json({ message: "Bạn không có quyền duyệt đơn này" });
       }
     }
@@ -1023,8 +1035,8 @@ app.post("/api/approval/manager", async (req, res) => {
   }
 });
 
-// POST /api/approval/hr - HR duyệt (được gọi từ N8N webhook hoặc frontend)
-// Xác thực approver email qua JWT token
+// POST /api/approval/hr - HR duyệt
+// Xác thực: exact token → verify type + approver email
 app.post("/api/approval/hr", async (req, res) => {
   try {
     const { token, action, approverEmail } = req.body;
@@ -1033,45 +1045,53 @@ app.post("/api/approval/hr", async (req, res) => {
       return res.status(400).json({ message: "Invalid action" });
     }
 
-    // Decode và verify token
+    // Decode token
     const tokenInfo = decodeApprovalToken(token);
-    if (!tokenInfo) {
-      return res.status(400).json({ message: "Invalid token format" });
-    }
+    const isNewToken = !!tokenInfo;
 
-    if (tokenInfo.isExpired) {
-      return res.status(410).json({ message: "Link đã hết hạn. Vui lòng yêu cầu nhân viên gửi lại đơn." });
-    }
-
-    if (tokenInfo.type !== "hr") {
-      return res.status(400).json({ message: "Token không phải dành cho HR" });
-    }
-
-    // Tìm đơn bằng random part của token
-    const randomPart = tokenInfo.randomPart;
+    // Tìm đơn bằng exact token trước (an toàn cho cả legacy và new token)
     let leave = await LeaveRequest.findOne({
-      hrApprovalToken: { $regex: `^${randomPart}` },
+      hrApprovalToken: token,
       hr_status: "pending",
       manager_status: "approved",
     });
 
-    // Fallback: exact match (legacy)
-    if (!leave) {
+    // Nếu dùng new token mà không tìm thấy → thử prefix match
+    if (isNewToken && !leave) {
       leave = await LeaveRequest.findOne({
-        hrApprovalToken: token,
+        hrApprovalToken: { $regex: `^${tokenInfo.randomPart}` },
         hr_status: "pending",
         manager_status: "approved",
       });
     }
 
     if (!leave) {
-      return res.status(404).json({ message: "Invalid token hoặc đơn chưa được Manager duyệt" });
+      const existing = await LeaveRequest.findOne({ hrApprovalToken: token });
+      if (existing) {
+        return res.status(400).json({ message: "Đơn đã được xử lý trước đó" });
+      }
+      return res.status(404).json({ message: "Không tìm thấy đơn hoặc chưa được Manager duyệt" });
+    }
+
+    // Verify: new token phải là type hr
+    if (isNewToken && tokenInfo.type !== "hr") {
+      return res.status(400).json({ message: "Token không phải dành cho HR" });
+    }
+
+    // Verify: token chưa hết hạn
+    if (isNewToken && tokenInfo.isExpired) {
+      return res.status(410).json({ message: "Link đã hết hạn. Vui lòng yêu cầu nhân viên gửi lại đơn." });
     }
 
     // Xác thực approver email
-    if (approverEmail) {
-      const expectedEmail = leave.hrApproverEmail || leave.hr_email;
-      if (approverEmail.toLowerCase() !== expectedEmail?.toLowerCase()) {
+    if (isNewToken && tokenInfo.approverEmail) {
+      const expected = leave.hrApproverEmail || leave.hr_email;
+      if (tokenInfo.approverEmail.toLowerCase() !== expected?.toLowerCase()) {
+        return res.status(403).json({ message: "Bạn không có quyền duyệt đơn này" });
+      }
+    } else if (approverEmail) {
+      const expected = leave.hrApproverEmail || leave.hr_email;
+      if (approverEmail.toLowerCase() !== expected?.toLowerCase()) {
         return res.status(403).json({ message: "Bạn không có quyền duyệt đơn này" });
       }
     }
@@ -1112,40 +1132,39 @@ app.post("/api/approval/hr", async (req, res) => {
   }
 });
 
-// GET /api/approval/token/:token - Kiểm tra token
+// GET /api/approval/token/:token - Kiểm tra token (public, không cần auth)
 app.get("/api/approval/token/:token", async (req, res) => {
   try {
     const { token } = req.params;
 
-    // Thử decode JWT token trước
-    const tokenInfo = decodeApprovalToken(token);
-    let request = null;
-    let approvalType = null;
-    let expiresAt = null;
+    // Thử exact match trước (luôn đúng cho cả new token và legacy token)
+    let request = await LeaveRequest.findOne({ managerApprovalToken: token });
+    let approvalType = "manager";
+    let expiresAt = request?.managerTokenExpiresAt || null;
 
-    if (tokenInfo) {
-      // JWT token — tìm bằng random part
-      const randomPart = tokenInfo.randomPart;
-      if (tokenInfo.type === "manager") {
-        request = await LeaveRequest.findOne({ managerApprovalToken: { $regex: `^${randomPart}` } });
-        approvalType = "manager";
-      } else if (tokenInfo.type === "hr") {
-        request = await LeaveRequest.findOne({ hrApprovalToken: { $regex: `^${randomPart}` } });
-        approvalType = "hr";
-      }
-      expiresAt = tokenInfo.expiresAt;
-    }
-
-    // Fallback: exact match (legacy token)
-    if (!request) {
-      request = await LeaveRequest.findOne({ managerApprovalToken: token });
-      approvalType = "manager";
-      if (request) expiresAt = request.managerTokenExpiresAt;
-    }
     if (!request) {
       request = await LeaveRequest.findOne({ hrApprovalToken: token });
       approvalType = "hr";
-      if (request) expiresAt = request.hrTokenExpiresAt;
+      expiresAt = request?.hrTokenExpiresAt || null;
+    }
+
+    // Nếu không tìm thấy, thử decode new token rồi prefix match (fallback cuối)
+    if (!request) {
+      const tokenInfo = decodeApprovalToken(token);
+      if (tokenInfo) {
+        // Thử prefix match bằng random part (đề phòng trường hợp DB lưu khác đi)
+        request = await LeaveRequest.findOne({ managerApprovalToken: { $regex: `^${tokenInfo.randomPart}` } });
+        if (request) {
+          approvalType = "manager";
+          expiresAt = tokenInfo.expiresAt;
+        } else {
+          request = await LeaveRequest.findOne({ hrApprovalToken: { $regex: `^${tokenInfo.randomPart}` } });
+          if (request) {
+            approvalType = "hr";
+            expiresAt = tokenInfo.expiresAt;
+          }
+        }
+      }
     }
 
     if (!request) {

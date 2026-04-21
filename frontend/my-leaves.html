@@ -6,6 +6,7 @@
   <title>Đơn nghỉ phép - ApproveHub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="layout.css" />
 </head>
 <body class="bg-zinc-100 font-sans">
 
@@ -588,34 +589,17 @@
       });
     });
 
-    // Init - Verify auth TRƯỚC khi hiển thị UI
+    // Init - sidebar.js handles auth cache, user is in window._sidebarUser
     (async () => {
-      if (!token) { clearSession(); return; }
+      const user = await initSidebar();
+      if (!user) return;
 
-      let me;
-      try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) { clearSession(); return; }
-        me = await res.json();
-      } catch { clearSession(); return; }
+      currentUser = user;
+      document.getElementById("avatar").textContent = (user.name || "").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = user.name || "";
+      document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : user.role === "manager" ? "Quản lý" : "Nhân viên";
 
-      currentUser = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
-      localStorage.setItem("user", JSON.stringify(currentUser));
-
-      document.getElementById("avatar").textContent = currentUser.name.slice(0,2).toUpperCase();
-      document.getElementById("userName").textContent = currentUser.name;
-      document.getElementById("userRole").textContent = currentUser.role === "hr" ? "HR" : currentUser.role === "manager" ? "Quản lý" : "Nhân viên";
-
-      initSidebar();
-
-      document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        clearSession();
-      });
-
-      // ✅ Verify OK - Hide loading
+      // Hide loading
       document.getElementById("loadingOverlay").classList.add("hidden");
 
       await loadLeaves();

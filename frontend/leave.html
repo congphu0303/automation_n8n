@@ -6,6 +6,7 @@
   <title>Leave Request - ApproveHub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="layout.css" />
 </head>
 <body class="bg-zinc-100 font-sans">
 
@@ -26,9 +27,6 @@
             <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
             <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
           </div>
-          <button id="logoutBtn" class="ml-2 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors">
-            <i class="fa-solid fa-right-from-bracket mr-1"></i>Sign Out
-          </button>
         </div>
       </header>
 
@@ -179,6 +177,9 @@
     </div>
   </div>
 
+  <!-- Load sidebar.js FIRST so getCachedUser & initSidebar are available -->
+  <script src="sidebar.js"></script>
+
   <script>
     // Backend API Base URL - absolute để N8N có thể gọi
     const BACKEND_BASE_URL =
@@ -200,6 +201,9 @@
         ? "http://localhost:5678/webhook/update-leave"
         : "https://n8n.internalautomation.io.vn/webhook/update-leave";
 
+    // Get token
+    const token = localStorage.getItem("token");
+
     // ── Helper: clear session & redirect to login ──
     const clearSession = () => {
       localStorage.removeItem("token");
@@ -207,17 +211,16 @@
       window.location.href = "login.html";
     };
 
-    // ── Auth + Init ──
-    const token = localStorage.getItem("token");
-
-    // ── MAIN INIT: Verify token TRƯỚC khi hiển thị UI ──
+    // ── INIT: Verify auth BEFORE showing form ──
     const init = async () => {
+      // 1. Check token exists
       if (!token) {
         clearSession();
         return;
       }
 
-      let me;
+      // 2. Get user from cache
+      let user;
       try {
         const res = await fetch(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -226,30 +229,27 @@
           clearSession();
           return;
         }
-        me = await res.json();
-      } catch (err) {
-        console.error("[Leave] Auth error:", err);
+        const me = await res.json();
+        user = {
+          id: me._id,
+          name: me.name,
+          email: me.email,
+          department: me.department,
+          role: me.role,
+        };
+        localStorage.setItem("user", JSON.stringify(user));
+      } catch {
         clearSession();
         return;
       }
 
-      // ✅ Token valid - store user
-      const user = {
-        id: me._id,
-        name: me.name,
-        email: me.email,
-        department: me.department,
-        role: me.role,
-      };
-      localStorage.setItem("user", JSON.stringify(user));
-
-      // Hide skeleton, show real form
+      // 3. NOW show form (after auth is verified)
       document.getElementById("formSkeleton").classList.add("hidden");
       document.getElementById("leaveForm").classList.remove("hidden");
 
-      // User info
+      // 4. Fill user info
       document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-      document.getElementById("userName").textContent = user.name || "Guest";
+      document.getElementById("userName").textContent = user.name || "";
       const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
       document.getElementById("userRole").textContent = roleLabels[user.role] || "";
 
@@ -258,14 +258,8 @@
       document.getElementById("employee_email").value = user.email || "";
       document.getElementById("department").value = user.department || "";
 
-      // Init sidebar
-      initSidebar();
-
-      // Logout handlers
-      document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        clearSession();
-      });
+      // 5. Init sidebar UI with user object
+      await initSidebar({ user });
 
       console.log("[Leave] Auth verified, UI ready");
     };
@@ -413,6 +407,5 @@
       }
     });
   </script>
-  <script src="sidebar.js"></script>
 </body>
 </html>

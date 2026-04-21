@@ -6,6 +6,7 @@
   <title>Approvals - ApproveHub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="layout.css" />
 </head>
 <body class="bg-zinc-100 font-sans">
 
@@ -27,9 +28,6 @@
             <p class="text-sm font-semibold text-zinc-800 leading-none" id="userName"></p>
             <p class="text-xs text-zinc-400 mt-0.5" id="userRole"></p>
           </div>
-          <button id="logoutBtn" class="ml-2 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors">
-            <i class="fa-solid fa-right-from-bracket mr-1"></i>Sign Out
-          </button>
         </div>
       </header>
 
@@ -166,19 +164,6 @@
     const token = localStorage.getItem("token");
 
     // ─── HELPERS ───
-    const clearSession = () => {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "login.html";
-    };
-
-    const redirectToLogin = (returnUrl) => {
-      if (approvalToken) {
-        sessionStorage.setItem("pendingApprovalToken", approvalToken);
-      }
-      const target = returnUrl ? `login.html?returnUrl=${encodeURIComponent(returnUrl)}` : "login.html";
-      window.location.href = target;
-    };
 
     // ─── GLOBAL STATE ───
     let userRole = "";
@@ -570,84 +555,61 @@
       });
     });
 
-    // ─── INITIALIZATION ───
-    // Không hide loading ở đây - sẽ hide sau khi verify
+    // ─── INITIALIZATION (cache-first via sidebar.js) ───
+    // Ensure userRole is set BEFORE any async operations
+    const initPage = async () => {
+      // 1. Get user first (cache-first via sidebar)
+      const user = await getCachedUser();
+      if (!user) return;
 
-    // ─── Nếu có approvalToken từ link email ───
-    if (approvalToken) {
-      if (!token) {
-        // Chưa đăng nhập → Lưu token và redirect đến login
-        sessionStorage.setItem("pendingApprovalToken", approvalToken);
-        window.location.href = "login.html?returnUrl=" + encodeURIComponent(window.location.href);
+      // 2. Set userRole IMMEDIATELY before anything else
+      userRole = user.role;
+
+      // Check permission
+      if (userRole !== "manager" && userRole !== "hr") {
+        document.getElementById("listView").innerHTML = `
+          <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
+            <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
+            <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
+            <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
+          </div>`;
+        document.getElementById("loadingState").classList.add("hidden");
+        document.getElementById("listView").classList.remove("hidden");
         return;
       }
-      // Đã đăng nhập → Tiếp tục xử lý token
-    }
 
-    // ─── Nếu không có token (chưa đăng nhập và không có link email) ───
-    if (!token) {
-      redirectToLogin();
+      // 3. Init sidebar UI with user object (avoids double auth call)
+      await initSidebar({ user });
+
+      document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = user.name || "";
+      document.getElementById("userRole").textContent = userRole === "hr" ? "HR" : "Manager";
+      document.getElementById("pageTitle").textContent = userRole === "hr" ? "HR Approvals" : "Manager Approvals";
+
+      // 4. Load data AFTER userRole is guaranteed to be set
+      if (approvalToken) {
+        document.getElementById("listView").classList.add("hidden");
+        await loadTokenRequest(approvalToken);
+      } else {
+        document.getElementById("tokenView").classList.add("hidden");
+        await loadRequests();
+      }
+    };
+
+    // Nếu chưa đăng nhập và có approval token → lưu token rồi redirect login
+    if (!token && approvalToken) {
+      sessionStorage.setItem("pendingApprovalToken", approvalToken);
+      window.location.href = "login.html?returnUrl=" + encodeURIComponent(window.location.href);
       return;
     }
 
-    // ── Đã đăng nhập → Kiểm tra role và load dữ liệu ──
-    const initPage = async () => {
-      try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          console.error("Auth failed:", res.status);
-          clearSession();
-          return;
-        }
-        const me = await res.json();
-        const user = { id: me._id, name: me.name, email: me.email, department: me.department, role: me.role };
-        localStorage.setItem("user", JSON.stringify(user));
+    // Nếu chưa đăng nhập và không có token → redirect login
+    if (!token) {
+      window.location.href = "login.html";
+      return;
+    }
 
-        // Kiểm tra quyền truy cập
-        if (me.role !== "manager" && me.role !== "hr") {
-          document.getElementById("listView").innerHTML = `
-            <div class="bg-white rounded-xl border border-zinc-200 p-12 text-center">
-              <i class="fa-solid fa-lock text-4xl text-zinc-300 mb-3"></i>
-              <p class="text-zinc-500 font-medium">Bạn không có quyền truy cập trang này.</p>
-              <a href="index.html" class="mt-4 inline-block text-blue-600 hover:underline">Quay về Dashboard</a>
-            </div>`;
-          // Hide skeleton, show error
-          document.getElementById("loadingState").classList.add("hidden");
-          document.getElementById("listView").classList.remove("hidden");
-          return;
-        }
-
-        document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
-        document.getElementById("userName").textContent = user.name || "Guest";
-        document.getElementById("userRole").textContent = user.role === "hr" ? "HR" : "Manager";
-        document.getElementById("pageTitle").textContent = user.role === "hr" ? "HR Approvals" : "Manager Approvals";
-
-        initSidebar(); // Auto-detects active page and role from localStorage
-
-        document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-          e.preventDefault();
-          clearSession();
-        });
-
-        userRole = me.role;
-
-        // ── Kiểm tra: có approvalToken (từ link email) hay không? ──
-        if (approvalToken) {
-          // Có link email → hiển thị form duyệt đơn
-          document.getElementById("listView").classList.add("hidden");
-          await loadTokenRequest(approvalToken);
-        } else {
-          // Không có link email → hiển thị danh sách đơn chờ duyệt
-          document.getElementById("tokenView").classList.add("hidden");
-          await loadRequests();
-        }
-      } catch (err) {
-        console.error("Init page error:", err);
-        clearSession();
-      }
-    };
+    // Start initialization
     initPage();
   </script>
 

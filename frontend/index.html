@@ -6,6 +6,8 @@
   <title>Dashboard - ApproveHub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="layout.css" />
+  <link rel="stylesheet" href="layout.css" />
 </head>
 <body class="bg-zinc-100 font-sans">
 
@@ -212,56 +214,16 @@
       window.location.href = "login.html";
     };
 
-    // ── Auth: validate token via /auth/me ──
-    const token = localStorage.getItem("token");
-
     const init = async () => {
-      if (!token) {
-        clearSession();
-        return;
-      }
+      // Sidebar init → auth cache → fade-in. User đã có sẵn trong window._sidebarUser
+      const user = await initSidebar();
 
-      let me;
-      try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          clearSession();
-          return;
-        }
-        me = await res.json();
-      } catch (err) {
-        console.error("[Index] Auth error:", err);
-        clearSession();
-        return;
-      }
-
-      // ✅ Token valid - store user
-      const user = {
-        id: me._id,
-        name: me.name,
-        email: me.email,
-        department: me.department,
-        role: me.role,
-      };
-      localStorage.setItem("user", JSON.stringify(user));
-
+      // Header user badge (đã có sẵn từ sidebar cache)
+      document.getElementById("avatar").textContent = (user?.name || "?").slice(0, 2).toUpperCase();
+      document.getElementById("userName").textContent = user?.name || "";
       const roleLabels = { employee: "Employee", manager: "Manager", hr: "HR" };
-
-      // Header user badge
-      document.getElementById("avatar").textContent = user.name ? user.name.slice(0,2).toUpperCase() : "??";
-      document.getElementById("userName").textContent = user.name || "Guest";
-      document.getElementById("userRole").textContent = roleLabels[user.role] || user.role || "";
-      document.getElementById("welcomeTitle").textContent = `Welcome back, ${user.name || "User"}!`;
-
-      // Init shared sidebar — auto-detects active page and role from localStorage
-      initSidebar();
-
-      // ── Show Settings link for HR only ──
-      if (user.role === "hr") {
-        document.getElementById("settingsLink").classList.remove("hidden");
-      }
+      document.getElementById("userRole").textContent = roleLabels[user?.role] || user?.role || "";
+      document.getElementById("welcomeTitle").textContent = `Welcome back, ${user?.name || "User"}!`;
 
       // ── Status badges ──
       const statusBadge = (status) => {
@@ -277,28 +239,32 @@
 
       // ── Load stats & recent activity ──
       try {
+        const token = localStorage.getItem("token");
         const res = await fetch(`${API_URL}/leave`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-
-        // Hide skeleton, show real data
-        document.getElementById("recentActivitySkeleton").classList.add("hidden");
-        document.getElementById("recentActivity").classList.remove("hidden");
 
         // Stats
         const now = new Date();
         const thisMonth = now.getMonth();
         const thisYear = now.getFullYear();
 
-        document.getElementById("statTotal").textContent = data.length;
-        document.getElementById("statPending").textContent = data.filter(r => r.status === "pending").length;
-        document.getElementById("statApproved").textContent = data.filter(r => {
-          if (r.status !== "approved") return false;
-          const approvedAt = new Date(r.updatedAt);
-          return approvedAt.getMonth() === thisMonth && approvedAt.getFullYear() === thisYear;
-        }).length;
-        document.getElementById("statRejected").textContent = data.filter(r => r.status === "rejected").length;
+        const statTotal = document.getElementById("statTotal");
+        const statPending = document.getElementById("statPending");
+        const statApproved = document.getElementById("statApproved");
+        const statRejected = document.getElementById("statRejected");
+
+        if (statTotal) statTotal.textContent = data.length;
+        if (statPending) statPending.textContent = data.filter(r => r.status === "pending").length;
+        if (statApproved) {
+          statApproved.textContent = data.filter(r => {
+            if (r.status !== "approved") return false;
+            const approvedAt = new Date(r.updatedAt);
+            return approvedAt.getMonth() === thisMonth && approvedAt.getFullYear() === thisYear;
+          }).length;
+        }
+        if (statRejected) statRejected.textContent = data.filter(r => r.status === "rejected").length;
 
         // Recent Activity Cards (last 5)
         const recentContainer = document.getElementById("recentActivity");
@@ -316,8 +282,7 @@
           `;
         } else {
           recentContainer.innerHTML = recentLeaves.map(r => {
-            const leaveId = r._id || r.id;
-            const dateStr = new Date(r.leave_date).toLocaleDateString('vi-VN');
+            const dateStr = new Date(r.leave_date).toLocaleDateString("vi-VN");
             const statusColor = {
               pending:   "border-l-yellow-500 bg-yellow-50/50",
               approved:  "border-l-green-500 bg-green-50/50",
@@ -329,13 +294,13 @@
               <div class="group flex items-center justify-between p-4 rounded-xl border border-zinc-200 ${statusColor} hover:shadow-md transition-all">
                 <div class="flex items-center gap-4 flex-1 min-w-0">
                   <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0
-                    ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                      r.status === 'approved' ? 'bg-green-100 text-green-600' :
-                      r.status === 'rejected' ? 'bg-red-100 text-red-600' :
-                      'bg-zinc-100 text-zinc-500'}">
-                    <i class="fa-solid ${r.status === 'pending' ? 'fa-clock' :
-                                      r.status === 'approved' ? 'fa-check' :
-                                      r.status === 'rejected' ? 'fa-xmark' : 'fa-ban'}"></i>
+                    ${r.status === "pending" ? "bg-yellow-100 text-yellow-600" :
+                      r.status === "approved" ? "bg-green-100 text-green-600" :
+                      r.status === "rejected" ? "bg-red-100 text-red-600" :
+                      "bg-zinc-100 text-zinc-500"}">
+                    <i class="fa-solid ${r.status === "pending" ? "fa-clock" :
+                                      r.status === "approved" ? "fa-check" :
+                                      r.status === "rejected" ? "fa-xmark" : "fa-ban"}"></i>
                   </div>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -343,7 +308,7 @@
                       ${statusBadge(r.status)}
                     </div>
                     <p class="text-xs text-zinc-500 mt-0.5">
-                      ${dateStr} · ${r.leave_days} day${r.leave_days > 1 ? 's' : ''}
+                      ${dateStr} · ${r.leave_days} day${r.leave_days > 1 ? "s" : ""}
                     </p>
                   </div>
                 </div>
@@ -354,18 +319,9 @@
             `;
           }).join("");
         }
-
       } catch (err) {
         console.error("Error loading dashboard:", err);
-        document.getElementById("recentActivity").innerHTML = `
-          <div class="text-center py-12 text-red-500">
-            <i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i>
-            <p>Failed to load activity. <a href="my-leaves.html" class="text-blue-600 hover:underline">View all requests</a></p>
-          </div>
-        `;
       }
-
-      console.log("[Index] Dashboard loaded");
     };
 
     init();

@@ -6,6 +6,7 @@
   <title>Settings - ApproveHub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="layout.css" />
 </head>
 <body class="bg-zinc-100 font-sans">
 
@@ -201,57 +202,25 @@
         ? "http://localhost:3001/api"
         : "/api";
     const token = localStorage.getItem("token");
-    const cachedUser = JSON.parse(localStorage.getItem("user") || "{}");
 
     // ── Auth guard: only HR can access Settings ──
     ;(async () => {
-      // 1) Kiểm tra token tồn tại
-      if (!token) {
-        window.location.href = "login.html";
+      const user = await initSidebar();
+      if (!user) return;
+
+      // Chỉ HR mới được truy cập
+      if (user.role !== "hr") {
+        console.warn("[Settings] Non-HR attempted access:", user.email);
+        window.location.href = "index.html";
         return;
       }
-
-      // 2) Verify token với backend
-      let me;
-      try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          clearSession();
-          return;
-        }
-        me = await res.json();
-      } catch (err) {
-        console.error("[Settings] Auth error:", err);
-        clearSession();
-        return;
-      }
-
-      // 3) Chỉ HR mới được truy cập
-      if (me.role !== "hr") {
-        console.warn("[Settings] Non-HR attempted access:", me.email);
-        window.location.href = "login.html";
-        return;
-      }
-
-      // 4) Token valid & HR → lưu user + hiển thị UI
-      const user = {
-        id: me._id,
-        name: me.name,
-        email: me.email,
-        department: me.department,
-        role: me.role,
-      };
-      localStorage.setItem("user", JSON.stringify(user));
 
       // Update UI
       document.getElementById("avatar").textContent = (user.name || "??").slice(0, 2).toUpperCase();
       document.getElementById("userName").textContent = user.name || "HR Admin";
       document.getElementById("userRole").textContent = "HR Administrator";
 
-      // Load sidebar & data
-      initSidebar();
+      // Load data
       loadUsers();
 
       console.log("[Settings] Auth verified - HR access granted");
@@ -262,12 +231,6 @@
       localStorage.removeItem("user");
       window.location.href = "login.html";
     };
-
-    // ── Logout (header button) ──
-    document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      clearSession();
-    });
 
     // ── Tabs ──
     document.getElementById("tabUsers").addEventListener("click", () => {

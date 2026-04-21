@@ -1,0 +1,39 @@
+/* layout.css — Transition mượt cho tất cả protected pages */
+
+/* Khi page mới load, main content fade in */
+main {
+  animation: pageFadeIn 0.25s ease forwards;
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Sidebar nav items — smooth hover */
+aside nav a {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Cards — hover lift effect */
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+/* Button press effect */
+button:active {
+  transform: scale(0.97);
+}
+
+/* Status badge pulse cho pending */
+@keyframes pendingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.badge-pending {
+  animation: pendingPulse 2s ease-in-out infinite;
+}

@@ -1,5 +1,10 @@
 /**
- * Shared Sidebar Component — injects + manages sidebar across all pages.
+ * Shared Sidebar Component — injects sidebar + manages auth cache.
+ *
+ * Auth caching:
+ * - /auth/me chỉ được gọi khi cache hết hạn (1 giờ) hoặc không có cache.
+ * - Trong 1 giờ, user data được đọc từ localStorage cache.
+ * → Không còn "flash" khi load page.
  */
 
 const SIDEBAR_HTML = `
@@ -52,87 +57,178 @@ const SIDEBAR_HTML = `
       <i class="fa-solid fa-right-from-bracket text-base w-5"></i> Sign Out
     </a>
   </div>
-</aside>
-`;
+</aside>`;
 
-/**
- * Get current active page from URL
- */
+// ─── Auth cache constants ───────────────────────
+const AUTH_CACHE_KEY = "sidebar_user_cache";
+const AUTH_CACHE_EXPIRY_KEY = "sidebar_user_expiry";
+const AUTH_CACHE_TTL_MS = 60 * 60 * 1000; // 1 giờ
+
+function getAPI_URL() {
+  return (
+    window.location.protocol === "file:" ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  )
+    ? "http://localhost:3001/api"
+    : "/api";
+}
+
+function clearSession(pendingApprovalToken) {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem(AUTH_CACHE_KEY);
+  localStorage.removeItem(AUTH_CACHE_EXPIRY_KEY);
+  // Giữ approval token từ URL nếu có — để sau khi login vẫn quay lại đúng trang
+  if (pendingApprovalToken) {
+    sessionStorage.setItem("pendingApprovalToken", pendingApprovalToken);
+    window.location.href = "login.html";
+  } else {
+    window.location.href = "login.html";
+  }
+}
+
+// Lấy approval token từ URL (dùng cho redirect sau login)
+function getApprovalTokenFromURL() {
+  try {
+    return new URLSearchParams(window.location.search).get("token");
+  } catch {
+    return null;
+  }
+}
+
+// ─── Auth: cache-first, chỉ gọi /auth/me khi cache hết hạn ───
+async function getCachedUser() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    clearSession(getApprovalTokenFromURL());
+    return null;
+  }
+
+  const cached = localStorage.getItem(AUTH_CACHE_KEY);
+  const expiry = parseInt(localStorage.getItem(AUTH_CACHE_EXPIRY_KEY) || "0");
+  const now = Date.now();
+
+  // Cache còn hạn → dùng cache
+  if (cached && now < expiry) {
+    try {
+      return JSON.parse(cached);
+    } catch {
+      localStorage.removeItem(AUTH_CACHE_KEY);
+    }
+  }
+
+  // Cache hết hạn hoặc không có → validate qua API
+  try {
+    const res = await fetch(`${getAPI_URL()}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      clearSession(getApprovalTokenFromURL());
+      return null;
+    }
+    const me = await res.json();
+    const user = {
+      id: me._id,
+      name: me.name,
+      email: me.email,
+      department: me.department,
+      role: me.role,
+    };
+
+    // Cache lại
+    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(user));
+    localStorage.setItem(AUTH_CACHE_EXPIRY_KEY, String(now + AUTH_CACHE_TTL_MS));
+    localStorage.setItem("user", JSON.stringify(user));
+
+    return user;
+  } catch {
+    // Lỗi mạng → dùng cache cũ nếu có
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        clearSession(getApprovalTokenFromURL());
+      }
+    } else {
+      clearSession(getApprovalTokenFromURL());
+    }
+    return null;
+  }
+}
+
+// ─── Helpers ───────────────────────────────────
 function getActivePageFromURL() {
-  const path = window.location.pathname;
-  const filename = path.split("/").pop() || "index.html";
+  const filename = (window.location.pathname.split("/").pop() || "index.html");
   return filename.replace(".html", "");
 }
 
-/**
- * Highlight active nav link
- */
 function highlightSidebarActive(activePage) {
   document.querySelectorAll(".nav-item").forEach(link => {
     const isActive = link.getAttribute("data-nav") === activePage;
-    link.classList.toggle("bg-blue-600", isActive);
-    link.classList.toggle("text-white", isActive);
-    if (!isActive) {
-      link.classList.add("text-zinc-400", "hover:bg-zinc-800", "hover:text-zinc-100");
-      link.classList.remove("bg-zinc-800");
+    if (isActive) {
+      link.classList.add("bg-blue-600", "text-white");
+      link.classList.remove("text-zinc-400");
     } else {
-      link.classList.remove("text-zinc-400", "hover:bg-zinc-800", "hover:text-zinc-100");
+      link.classList.remove("bg-blue-600", "text-white");
+      link.classList.add("text-zinc-400");
     }
   });
 }
 
-/**
- * Apply role-based visibility
- */
 function applyRoleVisibility(role) {
   const alwaysVisible = ["index", "leave", "my-leaves", "rooms", "book-room", "booking-dashboard"];
   alwaysVisible.forEach(page => {
     const el = document.querySelector(`[data-nav="${page}"]`);
-    if (el) {
-      el.classList.add("flex");
-      el.classList.remove("hidden");
-    }
+    if (el) { el.classList.add("flex"); el.classList.remove("hidden"); }
   });
 
   if (role === "manager" || role === "hr") {
     const el = document.querySelector('[data-nav="approvals"]');
-    if (el) {
-      el.classList.add("flex");
-      el.classList.remove("hidden");
-    }
+    if (el) { el.classList.add("flex"); el.classList.remove("hidden"); }
   }
-
   if (role === "hr") {
     const el = document.querySelector('[data-nav="settings"]');
-    if (el) {
-      el.classList.add("flex");
-      el.classList.remove("hidden");
-    }
+    if (el) { el.classList.add("flex"); el.classList.remove("hidden"); }
   }
-
   if (role === "manager") {
     const el = document.querySelector('[data-nav="meeting-approvals"]');
-    if (el) {
-      el.classList.add("flex");
-      el.classList.remove("hidden");
-    }
+    if (el) { el.classList.add("flex"); el.classList.remove("hidden"); }
   }
 }
 
-/**
- * Main init — inject sidebar into #appSidebar
- */
-function initSidebar(opts = {}) {
+// ─── Fade-in helper ─────────────────────────────
+function fadeInMain() {
+  const main = document.querySelector("main");
+  if (!main) return;
+  main.style.opacity = "0";
+  main.style.transition = "opacity 0.2s ease";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      main.style.opacity = "1";
+    });
+  });
+}
+
+// ─── Main init ─────────────────────────────────
+async function initSidebar(opts = {}) {
   const container = document.getElementById("appSidebar");
   if (!container) {
     console.warn("[Sidebar] #appSidebar not found");
     return;
   }
 
-  const activePage = opts.activePage || getActivePageFromURL();
-  const user = opts.user || JSON.parse(localStorage.getItem("user") || "{}");
-  const role = user?.role || "";
+  // Use passed user OR fetch from cache
+  let user = opts.user;
+  if (!user) {
+    user = await getCachedUser();
+  }
+  if (!user) return; // redirect đã xảy ra trong getCachedUser
 
+  const activePage = opts.activePage || getActivePageFromURL();
+  const role = user.role || "";
+
+  // Inject sidebar
   container.innerHTML = SIDEBAR_HTML;
 
   applyRoleVisibility(role);
@@ -144,7 +240,7 @@ function initSidebar(opts = {}) {
     nav.style.scrollbarColor = "#3f3f46 transparent";
   }
 
-  // Navigation handler - intercept clicks for smooth transition
+  // Click handlers
   document.querySelectorAll(".nav-item").forEach(link => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
@@ -155,18 +251,26 @@ function initSidebar(opts = {}) {
     });
   });
 
-  // Logout handler
   document.getElementById("sidebarLogoutBtn")?.addEventListener("click", (e) => {
     e.preventDefault();
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "login.html";
+    clearSession();
   });
 
-  // Listen for storage changes (cross-tab sync)
   window.addEventListener("storage", (e) => {
     if (e.key === "user" || e.key === "token") {
-      initSidebar({ activePage, user: JSON.parse(localStorage.getItem("user") || "{}") });
+      initSidebar({ activePage });
     }
   });
+
+  // Fade-in main content
+  fadeInMain();
+
+  // Resolve promise để page script biết user đã load xong
+  if (typeof opts.onReady === "function") {
+    opts.onReady(user);
+  }
+
+  // Expose user globally để page scripts dùng
+  window._sidebarUser = user;
+  return user;
 }
