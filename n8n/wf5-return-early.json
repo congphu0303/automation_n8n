@@ -1,0 +1,617 @@
+{
+  "name": "wf5-return-early",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "return-early",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e0b5ba1c-c8ea-4e0d-803d-b9bd6abb5c37",
+      "name": "Webhook: Return Early",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1632,
+        2400
+      ],
+      "webhookId": "wf5-return-early"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst headers = item.headers || {};\nconst authHeader = headers.authorization || '';\n\n// Lấy và làm sạch dữ liệu ngày tháng\nconst rawDate = (body.leaveDate || body.leave_date || '').trim();\nconst rawEndDate = (body.end_date || body.endDate || '').trim();\n\nconst fmt = (d) => {\n  if (!d) return '';\n  const pd = new Date(d);\n  if (isNaN(pd)) return d;\n  return pd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });\n};\n\n// Logic lấy ngày quay lại thực tế (mặc định là ngày hôm nay nếu trống)\nconst actualReturn = body.actualReturnDate || new Date().toISOString().split('T')[0];\n\nreturn [{ json: {\n  token: authHeader.replace('Bearer ', ''),\n  leaveId: body.leaveId || body._id || '',\n  actualReturnDate: actualReturn,\n  actualReturnDateDisplay: fmt(actualReturn), // Thêm bản hiển thị đẹp cho email\n  reason: body.reason || '',\n  employeeName: body.employeeName || body.employee_name || '',\n  employeeEmail: body.employeeEmail || body.employee_email || '',\n  leaveDate: rawDate,\n  leaveDateDisplay: fmt(rawDate),\n  end_date: rawEndDate,\n  endDateDisplay: fmt(rawEndDate),\n  leaveDays: parseInt(body.leaveDays || body.leave_days || 0),\n  department: body.department || '',\n  managerEmail: body.managerEmail || '',\n  hrEmail: body.hrEmail || '',\n  refundDays: parseInt(body.refundDays || 0),\n  // QUAN TRỌNG: Gán cứng URL để tránh lỗi access denied\n  frontendUrl: 'https://approvehub.internalautomation.io.vn' \n} }];"
+      },
+      "id": "a6b4dacd-2a7b-458d-8426-d92eb5425047",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1392,
+        2400
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const input = $('Parse Input').first().json;\n\n// Backend already updated DB. wf8 only sends notification emails.\n// Determine if HR should be notified (leave was >3 days, approved by HR)\nconst needsHrNotification = input.hrEmail && input.hrEmail !== '';\n\nreturn [{ json: {\n  ...input,\n  needsHrNotification,\n  // Build HR approval link if applicable\n  hrApprovalLink: needsHrNotification\n    ? `${input.frontendUrl}/approval-page.html?token=${encodeURIComponent(input.hrApprovalToken || '')}&hr=true`\n    : ''\n} }];"
+      },
+      "id": "fcb1e9a2-8892-4999-9063-d9b96981bbf0",
+      "name": "Prepare Emails",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        2400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"status\": \"refunded\",\n  \"refundDays\": {{ $('Parse Input').first().json.refundDays }},\n  \"actualReturnDate\": \"{{ $('Parse Input').first().json.actualReturnDate }}\"\n}",
+        "options": {}
+      },
+      "id": "8966f17f-7dcd-47d1-893c-c7dec4284d9d",
+      "name": "Respond: Done",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3152,
+        2400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "837bf3ec-f70b-4ba6-9092-aa6bddd6d4b1",
+              "leftValue": "={{ $('Prepare Emails').first().json.refundDays }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -864,
+        2400
+      ],
+      "id": "348a2aaf-4e8a-4f69-a6f5-9ae525918e2e",
+      "name": "Check: Has Refund?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "643e882a-5be8-49ee-9de5-30c2129b20f2",
+              "leftValue": "={{ $('Prepare Emails').first().json.needsHrNotification }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1520,
+        2160
+      ],
+      "id": "d4e1f583-88d3-4573-90e2-a3cc30e8ab55",
+      "name": "Check: Notify HR?"
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Truy cập node 'Parse Input' để lấy ngày về thực tế\nconst parseInput = $('Parse Input').first().json;\nconst actualReturnDate = parseInput.actualReturnDateDisplay || parseInput.actualReturnDate || '';\n\n// 3. Gán các biến chính\nconst to = item.employeeEmail;\nconst subject = `Xác nhận hoàn trả ngày phép`;\n\n// 4. Nội dung HTML với tiếng Việt có dấu và căn chỉnh chi tiết\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #6610f2, #5a0fd4); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  \n  .content { padding: 28px; text-align: left; }\n  \n  .badge { display: inline-block; padding: 5px 12px; background: #f3ebff; color: #6610f2; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  \n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; text-align: left; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 40%; background: #fafafa; }\n  \n  .refund-box { \n    background: #f8f5ff; \n    border: 2px dashed #6610f2; \n    padding: 20px; \n    margin-top: 16px; \n    border-radius: 8px; \n    text-align: center; \n  }\n  .refund-number { font-size: 28px; font-weight: 800; color: #6610f2; display: block; }\n  \n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\"><h2>Xác nhận Hoàn trả Ngày phép</h2></div>\n  <div class=\"content\">\n    <p>Chào <strong>${item.employeeName}</strong>,</p>\n    <p style=\"margin-top:8px;\">Hệ thống ApproveHub ghi nhận bạn đã quay lại làm việc sớm hơn kế hoạch. Thông tin hoàn trả đã được cập nhật thành công.</p>\n    \n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Đã hoàn trả ngày phép</span></div>\n    \n    <table class=\"details-table\">\n      <tr><td>Đơn gốc</td><td>${item.leaveDateDisplay} (${item.leaveDays} ngày)</td></tr>\n      <tr><td>Ngày kết thúc cũ</td><td>${item.endDateDisplay}</td></tr>\n      <tr><td>Ngày về thực tế</td><td><strong>${actualReturnDate}</strong></td></tr>\n      <tr><td>Mã đơn</td><td>#${item.leaveId}</td></tr>\n    </table>\n    \n    <div class=\"refund-box\">\n      <span class=\"refund-number\">+${item.refundDays} ngày</span>\n      <small style=\"color:#6610f2; font-weight: 600;\">Đã cộng vào quỹ phép cá nhân của bạn</small>\n    </div>\n    \n    <p style=\"margin-top:16px; font-size:0.88rem; color:#666;\">Thông tin này đã được đồng bộ với hệ thống quản lý nhân sự. Bạn có thể kiểm tra số dư phép mới ngay trên ứng dụng.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// 5. Trả về kết quả\nreturn [{ \n  json: { \n    ...item, \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "cb3c1395-b7f6-42a6-b9f3-1b7e9c9b048a",
+      "name": "Prep: Email: Refund to Employee",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json.employeeEmail}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "4db845d7-8c53-4a24-abf8-3fb629d116a5",
+      "name": "Token: Email: Refund to Employee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -144,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Refund to Employee').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "ee934f90-9c3f-4d93-8f31-9bfbf4e6ee9e",
+      "name": "Encode: Email: Refund to Employee",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "9dc771ad-dc3b-4dea-9f0d-706d6b290892",
+      "name": "Email: Refund to Employee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        368,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node 'Parse Input' (Sử dụng Absolute Reference chuẩn trong Code node)\nconst inputData = $('Parse Input').first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript (${variable})\nconst to = inputData.managerEmail;\nconst subject = `Nhân viên ${inputData.employeeName} hoàn trả ngày phép`;\n\n// 3. Xử lý ngày về thực tế (đề phòng trường hợp chưa định dạng)\nconst actualReturn = inputData.actualReturnDateDisplay || inputData.actualReturnDate || '';\n\n// 4. Nội dung HTML với tiếng Việt có dấu và định dạng chuyên nghiệp\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #6610f2, #5a0fd4); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #f3ebff; color: #6610f2; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 40%; background: #fafafa; }\n  .refund-box { background: #f8f5ff; border: 2px dashed #6610f2; padding: 18px; margin-top: 16px; border-radius: 8px; text-align: center; color: #6610f2; font-weight: 700; font-size: 1.1rem; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\"><h2>Hoàn trả Ngày phép</h2></div>\n  <div class=\"content\">\n    <p>Kính gửi <strong>${inputData.managerEmail || 'Bộ phận Quản lý'}</strong>,</p>\n    <p style=\"margin-top:8px;\">Nhân viên <strong>${inputData.employeeName}</strong> đã quay lại làm việc sớm hơn kế hoạch. Thông tin hoàn trả ngày phép như sau:</p>\n    \n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Đã hoàn trả</span></div>\n    \n    <table class=\"details-table\">\n      <tr><td>Nhân viên</td><td><strong>${inputData.employeeName}</strong></td></tr>\n      <tr><td>Ngày nghỉ gốc</td><td>${inputData.leaveDateDisplay}</td></tr>\n      <tr><td>Ngày kết thúc cũ</td><td>${inputData.endDateDisplay}</td></tr>\n      <tr><td>Ngày về thực tế</td><td><strong style=\"color: #6610f2;\">${actualReturn}</strong></td></tr>\n      <tr><td>Mã đơn</td><td>#${inputData.leaveId}</td></tr>\n    </table>\n    \n    <div class=\"refund-box\">+${inputData.refundDays} ngày phép đã được hoàn lại</div>\n    \n    <p style=\"margin-top:16px; font-size:0.88rem; color:#666;\">Hệ thống đã tự động cập nhật lại quỹ phép cá nhân của nhân viên này.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\n// 5. Trả về kết quả cuối cùng\nreturn [{ \n  json: { \n    ...($json || {}), \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "ce8d1934-9574-4565-952b-a34dabdeb890",
+      "name": "Prep: Email: Refund to Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        608,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $('Prepare Emails').item.json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "4c1bbb86-9baa-42ab-a362-3dc0ed52fd47",
+      "name": "Token: Email: Refund to Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        880,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Refund to Manager').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "6e5521cd-2d62-4d87-84ca-db1a609fe83f",
+      "name": "Encode: Email: Refund to Manager",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "57c2bf5a-6347-4468-abe3-3f1275321ddb",
+      "name": "Email: Refund to Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1328,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node 'Parse Input' (Sử dụng Absolute Reference chuẩn trong Code node)\nconst inputData = $('Parse Input').first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript (${variable})\nconst to = inputData.hrEmail;\nconst subject = `Nhân viên ${inputData.employeeName} hoàn trả ngày phép - Cần cập nhật số phép`;\n\n// 3. Xử lý ngày về thực tế\nconst actualReturn = inputData.actualReturnDateDisplay || inputData.actualReturnDate || '';\n\n// 4. Nội dung HTML với tiếng Việt có dấu và màu sắc đặc trưng của HR (Tím đậm)\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #f3f4f6; color: #6d28d9; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 40%; background: #fafafa; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\"><h2>Thông báo Hoàn trả Ngày phép</h2></div>\n  <div class=\"content\">\n    <p>Kính gửi <strong>Bộ phận Nhân sự (HR)</strong>,</p>\n    <p style=\"margin-top:8px;\">Nhân viên <strong>${inputData.employeeName}</strong> đã quay lại làm việc sớm hơn kế hoạch. Thông tin cần được cập nhật trong hệ thống:</p>\n    \n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Hoàn trả ngày phép</span></div>\n    \n    <table class=\"details-table\">\n      <tr><td>Nhân viên</td><td><strong>${inputData.employeeName}</strong></td></tr>\n      <tr><td>Phòng ban</td><td>${inputData.department}</td></tr>\n      <tr><td>Ngày nghỉ gốc</td><td>${inputData.leaveDateDisplay}</td></tr>\n      <tr><td>Ngày kết thúc cũ</td><td>${inputData.endDateDisplay}</td></tr>\n      <tr><td>Ngày về thực tế</td><td><strong style=\"color: #6d28d9;\">${actualReturn}</strong></td></tr>\n      <tr><td>Ngày phép hoàn trả</td><td><strong style=\"color: #28a745;\">+${inputData.refundDays} ngày</strong></td></tr>\n      <tr><td>Mã đơn</td><td>#${inputData.leaveId}</td></tr>\n    </table>\n    \n    <p style=\"margin-top:16px; font-size:0.88rem; color:#666;\">Số ngày phép đã được tự động hoàn trả vào quỹ phép của nhân viên trên hệ thống ApproveHub.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\n// 5. Trả về kết quả cuối cùng\nreturn [{ \n  json: { \n    ...($json || {}), \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "849ca522-e43a-4fdc-a1a0-7b82f824f064",
+      "name": "Prep: Email: Refund to HR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        2000
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $('Prepare Emails').item.json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "6c6770e2-9d6c-402a-90c4-05a9b823200a",
+      "name": "Token: Email: Refund to HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2144,
+        2000
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Refund to HR').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "83819493-dfaf-4a22-bbc9-a3a62bdcfe13",
+      "name": "Encode: Email: Refund to HR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        2000
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "96911aac-38a4-4d4b-9332-be332eeb5f37",
+      "name": "Email: Refund to HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2592,
+        2000
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Return Early": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Emails": {
+      "main": [
+        [
+          {
+            "node": "Check: Has Refund?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Refund to Employee": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Refund to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Refund to Manager": {
+      "main": [
+        [
+          {
+            "node": "Check: Notify HR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Refund to HR": {
+      "main": [
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Has Refund?": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Refund to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Notify HR?": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Refund to HR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Refund to Employee": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Refund to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Refund to Employee": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Refund to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Refund to Employee": {
+      "main": [
+        [
+          {
+            "node": "Email: Refund to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Refund to Manager": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Refund to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Refund to Manager": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Refund to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Refund to Manager": {
+      "main": [
+        [
+          {
+            "node": "Email: Refund to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Refund to HR": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Refund to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Refund to HR": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Refund to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Refund to HR": {
+      "main": [
+        [
+          {
+            "node": "Email: Refund to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b51cf881-98dd-40c6-8aa1-2a45001f4e2e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0554ac5f13fea7b1063176ecf7df64ebcae2d0b2c896fdc0f2cac8a36246028e"
+  },
+  "id": "RwhZW3nHqT7GwCG8",
+  "tags": []
+}

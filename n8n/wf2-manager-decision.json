@@ -1,0 +1,750 @@
+{
+  "name": "wf2-manager-decision",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manager-decision",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "457d1a1b-3f20-488b-8888-78fa8bbfa50a",
+      "name": "Webhook: Manager Decision",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -8656,
+        13072
+      ],
+      "webhookId": "wf2-manager-decision"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst query = item.query || {};\n\nconst rawDate = body.leaveDate || body.leave_date || '';\nconst fmt = (d) => {\n  if (!d) return '';\n  const pd = new Date(d);\n  if (isNaN(pd)) return d;\n  return pd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });\n};\n\nreturn [{ \n  json: {\n    token: body.token || query.token || '',\n    action: body.action || query.action || 'approve',\n    employeeName: body.employeeName || body.employee_name || '',\n    employeeEmail: body.employeeEmail || body.employee_email || '',\n    leaveDate: rawDate,\n    leaveDateDisplay: fmt(rawDate),\n  endDateDisplay: fmt(body.end_date || body.endDate || ''),\n    leaveDays: parseInt(body.leaveDays || body.leave_days || 0),\n    leaveId: body.leaveId || '',\n    reason: body.reason || '',\n    department: body.department || '',\n    requiresHrApproval: body.requiresHrApproval === true || body.requiresHrApproval === 'true',\n    hrApprovalLink: body.hrApprovalLink || body.hrApproval_link || '',\n    hrEmail: body.hrEmail || body.hr_email || '',\n    managerEmail: body.managerEmail || '',\n    \n    // DÒNG QUAN TRỌNG: Lấy Token từ Webhook để chuyển cho node sau pha chế\n    hrApprovalToken: body.hrApprovalToken || '', \n    \n    managerApprovalLink: body.managerApprovalLink || body.manager_approval_link || '',\n    isInternalCall: body.isInternalCall === true || body.isInternalCall === 'true',\n    backendUrl: 'http://backend:3001' + '/api/approval/manager'\n  } \n}];"
+      },
+      "id": "cea53044-22fc-4373-8f8d-a998bfcbaec5",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -8336,
+        13072
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const resp = $input.first().json;\nconst data = resp.body || resp;\nconst input = $('Parse Input').first().json;\n\nconst frontendUrl = 'https://approvehub.internalautomation.io.vn';\n\nconst msg = data.message || '';\nconst isAlreadyProcessed = (resp.statusCode === 400 || resp.statusCode === 409) &&\n  (msg.includes('da duoc xu ly') || msg.includes('already processed'));\n\nconst effectiveRequiresHr = isAlreadyProcessed\n  ? (input.requiresHrApproval === true ? true : input.requiresHrApproval)\n  : input.requiresHrApproval;\n\nconst hrToken = data.hrApprovalToken || input.hrApprovalToken || '';\nconst hrApprovalLink = hrToken ? frontendUrl + '/approval-page.html?token=' + encodeURIComponent(hrToken) + '&hr=true' : (input.hrApprovalLink || '');\nconst rawDate = input.leaveDate || '';\n\n// LẤY GIÁ TRỊ END DATE TỪ INPUT ĐỂ FIX LỖI\nconst endDateComputed = input.endDateDisplay || ''; \n\nconst fmt = (d) => {\n  if (!d) return '';\n  const pd = new Date(d);\n  // Nếu là định dạng dd/mm/yyyy thì pd sẽ là NaN, hàm này sẽ trả về nguyên gốc chuỗi đó\n  if (isNaN(pd)) return d; \n  return pd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });\n};\n\nreturn [{ \n  json: {\n    success: resp.statusCode === 200 || isAlreadyProcessed,\n    status: isAlreadyProcessed\n      ? (input.action === 'reject' ? 'rejected' : 'approved')\n      : (data.status || ''),\n    action: input.action,\n    message: isAlreadyProcessed ? 'Already processed via email link' : (data.message || ''),\n    leaveId: data.leaveId || input.leaveId || '',\n    employeeName: input.employeeName,\n    employeeEmail: input.employeeEmail,\n    leaveDate: rawDate,\n    leaveDateDisplay: fmt(rawDate),\n    // Dòng 48 hiện tại đã có biến để gọi:\n    endDateDisplay: fmt(endDateComputed), \n    leaveDays: input.leaveDays,\n    reason: input.reason,\n    department: input.department,\n    requiresHrApproval: effectiveRequiresHr,\n    hrApprovalLink: hrApprovalLink,\n    hrEmail: data.hrEmail || input.hrEmail,\n  } \n}];"
+      },
+      "id": "1caef609-f547-45c5-9c4b-e8197d79da07",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -8000,
+        13072
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"status\": \"{{ $json.status }}\",\n  \"message\": \"Quyet dinh cua Manager da duoc xu ly\"\n}",
+        "options": {}
+      },
+      "id": "41c4107c-1712-4875-a342-9de1f957fced",
+      "name": "Respond: Done",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -4736,
+        12944
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d28f0e8c-4c3c-460f-a344-b6d68298af79",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "reject",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -7744,
+        13072
+      ],
+      "id": "ae186dcc-c49f-47b9-b284-ae536c75b695",
+      "name": "Check: Rejected? "
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f77aedf1-722f-441e-a768-799122d4ea4d",
+              "leftValue": "={{ $json.leaveDays }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -7408,
+        13232
+      ],
+      "id": "716f17f9-3065-40c2-8bb9-b6c6868f6634",
+      "name": "Check: Needs HR?"
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Gán biến bằng cú pháp JavaScript chuẩn\nconst to = item.employeeEmail;\nconst subject = `Đơn nghỉ phép của bạn bị từ chối bởi Manager`;\n\n// 3. Sửa các biến trong htmlBody sang cú pháp ${item.variable}\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; }\n  .badge { display: inline-block; padding: 5px 12px; background: #fdeaea; color: #721c24; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 20px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 16px; border-bottom: 1px solid #f5f5f5; font-size: 0.92rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .reason-box { background: #fff8f8; border-left: 4px solid #dc3545; padding: 14px 18px; margin-top: 18px; border-radius: 0 8px 8px 0; font-size: 0.92rem; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Đơn nghỉ phép bị từ chối</h2></div>\n    <div class=\"content\">\n      <p>Xin chào <strong>${item.employeeName}</strong>,</p>\n      <p style=\"margin-top:8px;\">Rất tiếc, đơn nghỉ phép của bạn đã bị <strong style=\"color:#dc3545;\">TỪ CHỐI</strong> bởi Manager.</p>\n      <div style=\"text-align:center; margin:18px 0;\"><span class=\"badge\">Không được phê duyệt</span></div>\n      <table class=\"details-table\">\n        <tr><td>Ngày nghỉ</td><td><strong>${item.leaveDateDisplay}</strong></td></tr>\n        <tr><td>Ngày kết thúc</td><td><strong>${item.endDateDisplay}</strong></td></tr>\n        <tr><td>Số ngày</td><td>${item.leaveDays} ngày</td></tr>\n        <tr><td>Phòng ban</td><td>${item.department}</td></tr>\n        <tr><td>Mã đơn</td><td>#${item.leaveId}</td></tr>\n      </table>\n      <div class=\"reason-box\"><strong>Lý do từ chối:</strong><br>${item.reason || 'Không có lý do cụ thể'}</div>\n      <p style=\"margin-top:20px; font-size:0.9rem; color:#666;\">Nếu cần thêm thông tin, vui lòng trao đổi trực tiếp với Manager phụ trách để được hỗ trợ.</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// Trả về dữ liệu cuối cùng\nreturn [{ json: { ...item, _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "f8c45a57-a76b-4780-8197-dc9ad5e5c2ac",
+      "name": "Prep: Email: Rejected",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -7440,
+        12624
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "6c9cb978-f05b-4f4a-aa06-4522dc456a3c",
+      "name": "Token: Email: Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -7216,
+        12624
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Rejected').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "fd08b0d2-6e1d-4872-a9af-daca78c1850e",
+      "name": "Encode: Email: Rejected",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6928,
+        12624
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "45f072e1-d3d3-49f9-a176-d12a367cecbe",
+      "name": "Email: Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -6704,
+        12624
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Lấy link phê duyệt từ node 'Parse Response' (Cú pháp chuẩn cho Code node)\nconst hrApprovalLink = $('Parse Response').first().json.hrApprovalLink;\n\n// 3. Gán các biến chính\nconst to = item.hrEmail;\nconst subject = `Yêu cầu cần HR duyệt - ${item.employeeName}`;\n\n// 4. Nội dung HTML (Thay {{ $json.x }} bằng ${item.x})\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; }\n  .badge { display: inline-block; padding: 5px 12px; background: #e9f7ef; color: #155724; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 20px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 16px; border-bottom: 1px solid #f5f5f5; font-size: 0.92rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n\n  .reason-box { \n    background: #f8f9fa; \n    border-left: 4px solid #28a745; \n    padding: 14px 18px; \n    margin: 20px 0; \n    border-radius: 0 8px 8px 0; \n    font-size: 0.92rem; \n    line-height: 1.6; \n    color: #333; \n    text-align: left;\n  }\n  .reason-box strong { color: #1e7e34; display: block; margin-bottom: 4px; }\n\n  .btn-container { \n    text-align: center; \n    margin-top: 30px; \n    width: 100%; \n  }\n  .btn { \n    display: inline-block; \n    min-width: 300px; \n    padding: 16px 40px; \n    text-decoration: none; \n    border-radius: 8px; \n    font-weight: 700; \n    font-size: 1.1rem; \n    background: #28a745; \n    color: white; \n    text-align: center;\n  }\n  .btn:hover { opacity: 0.85; }\n\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Yêu cầu HR Phê duyệt cuối cùng</h2></div>\n    <div class=\"content\">\n      <p>Kính gửi <strong>Bộ phận Nhân sự (HR)</strong>,</p>\n      <p style=\"margin-top:8px;\">Đơn nghỉ phép <strong>${item.leaveDays} ngày</strong> đã được Manager phê duyệt, cần xác nhận cuối cùng:</p>\n      \n      <div style=\"text-align:center; margin:18px 0;\"><span class=\"badge\">Đã được Manager duyệt</span></div>\n      \n      <table class=\"details-table\">\n        <tr><td>Nhân viên</td><td><strong>${item.employeeName}</strong></td></tr>\n        <tr><td>Phòng ban</td><td>${item.department}</td></tr>\n        <tr><td>Ngày nghỉ</td><td>${item.leaveDateDisplay}</td></tr>\n        <tr><td>Ngày kết thúc</td><td>${item.endDateDisplay}</td></tr>\n        <tr><td>Số ngày</td><td>${item.leaveDays} ngày</td></tr>\n        <tr><td>Mã đơn</td><td>#${item.leaveId}</td></tr>\n      </table>\n\n      <div class=\"reason-box\">\n        <strong>Lý do nghỉ phép:</strong>\n        ${item.reason}\n      </div>\n      \n      <div class=\"btn-container\">\n        <a href=\"${hrApprovalLink}&action=approve\" class=\"btn\" style=\"color: white;\">Phê duyệt</a>\n      </div>\n\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// Trả về kết quả (bao gồm dữ liệu cũ và các trường mới có dấu _)\nreturn [{ json: { ...item, _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "57c6a3b5-d03f-4855-8200-dfabb7faa71b",
+      "name": "Prep: Email: To HR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -7120,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "b983856e-001d-4d95-ac05-7195a4268b13",
+      "name": "Token: Email: To HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -6928,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: To HR').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "3f3ed66f-5225-44b8-8829-97dfdc3a322c",
+      "name": "Encode: Email: To HR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6736,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e417892c-f775-4fdd-b38c-c537b72b0293",
+      "name": "Email: To HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -6448,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node 'Parse Response'\nconst responseData = $('Parse Response').first().json;\n\n// 2. Gán các biến chính bằng cú pháp chuẩn của JavaScript (${biến})\nconst to = responseData.employeeEmail;\nconst subject = `Đơn đã được manager phê duyệt, chờ HR xác nhận`;\n\n// 3. Sửa các biến trong htmlBody (Thay {{ ... }} bằng ${...})\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #17a2b8, #138496); color: white; padding: 24px; text-align: center; }\n  \n  .content { padding: 28px; text-align: left; }\n  \n  .badge { display: inline-block; padding: 5px 12px; background: #d1ecf1; color: #0c5460; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  \n  .info-box { background: #f0f9fa; border: 1px solid #bee5eb; border-radius: 8px; padding: 18px; margin: 16px 0; text-align: left; font-size: 0.92rem; line-height: 1.8; }\n  \n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Manager đã phê duyệt!</h2></div>\n    <div class=\"content\">\n      <p>Xin chào <strong>${responseData.employeeName}</strong>,</p>\n      <p style=\"margin-top:8px;\">Đơn nghỉ phép của bạn đã được <strong>Manager phê duyệt</strong>. Hiện đang chờ <strong>HR xác nhận cuối cùng</strong>.</p>\n      \n      <div style=\"text-align:center; margin:18px 0;\"><span class=\"badge\">Đang chờ HR</span></div>\n      \n      <div class=\"info-box\">\n        <strong style=\"color: #138496;\">Chi tiết phê duyệt:</strong><br>\n        • <strong>Ngày nghỉ:</strong> ${responseData.leaveDateDisplay}<br>\n        • <strong>Ngày kết thúc:</strong> ${responseData.endDateDisplay}<br>\n        • <strong>Số ngày:</strong> ${responseData.leaveDays} ngày<br>\n        • <strong>Mã đơn:</strong> #${responseData.leaveId}\n      </div>\n      \n      <p>Bạn sẽ nhận email thông báo ngay khi HR hoàn tất quy trình.</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\n// Trả về kết quả cuối cùng theo cấu trúc bạn cần\nreturn [{ \n  json: { \n    ...($json || {}), \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "e69576b3-31b9-4555-a014-55d6ce1034f2",
+      "name": "Prep: Email: Waiting HR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -6224,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $node[\"Prep: Email: To HR\"].json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "4115a90d-a7f4-424c-9fe8-fe9306e5cff9",
+      "name": "Token: Email: Waiting HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -5968,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Waiting HR').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "670cd961-2369-4a21-a7e2-343f7783b9f8",
+      "name": "Encode: Email: Waiting HR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5760,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "011ac6cc-d8d1-4144-b5bf-8771487e6345",
+      "name": "Email: Waiting HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -5520,
+        12928
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript chuẩn (${...})\nconst to = item.employeeEmail;\nconst subject = `Đơn nghỉ phép đã được phê duyệt!`;\n\n// 3. Sửa toàn bộ các biến trong htmlBody (Thay {{ $json.x }} bằng ${item.x})\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; padding: 24px; text-align: center; }\n  \n  /* Nội dung chính vẫn căn trái theo yêu cầu trước đó */\n  .content { padding: 28px; text-align: left; }\n  \n  .badge { display: inline-block; padding: 5px 12px; background: #d4edda; color: #155724; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  \n  .success-box { \n    background: #f4fbf6; \n    border: 1px solid #28a745; \n    padding: 18px; \n    margin: 20px 0; \n    border-radius: 8px; \n    text-align: left; \n    color: #155724; \n    line-height: 1.8;\n  }\n  \n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Đơn nghỉ phép đã được phê duyệt!</h2></div>\n    <div class=\"content\">\n      <p>Xin chào <strong>${item.employeeName}</strong>,</p>\n      <p style=\"margin-top:8px;\">Đơn nghỉ phép ngày <strong>${item.leaveDateDisplay}</strong> - <strong>${item.endDateDisplay}</strong> của bạn đã được <strong>phê duyệt</strong> bởi Manager!</p>\n      \n      <div style=\"text-align:center; margin:18px 0;\"><span class=\"badge\">Phê duyệt thành công</span></div>\n      \n      <div class=\"success-box\">\n        <strong>Chi tiết đơn:</strong><br>\n        • Số ngày: <strong>${item.leaveDays} ngày</strong><br>\n        • Mã đơn: #${item.leaveId}\n      </div>\n      \n      <p style=\"text-align: center; margin-top: 20px; font-weight: 500;\">Chúc bạn có kỳ nghỉ vui vẻ!</p>\n      \n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// 4. Trả về đúng cấu trúc để node Encode phía sau xử lý được\nreturn [{ \n  json: { \n    ...item, \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "dda0daab-e446-44d2-90cc-dd48b61cfdb1",
+      "name": "Prep: Email: Approved",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -7136,
+        13312
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "a0f2297f-fe11-4d18-811d-83ed61d63423",
+      "name": "Token: Email: Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -6944,
+        13312
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Approved').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "a0bd8cc7-af50-4fde-a3b2-17cbd66d2f93",
+      "name": "Encode: Email: Approved",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6752,
+        13312
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c8ace9cd-b4da-4cf7-85f7-316afc49e709",
+      "name": "Email: Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -6544,
+        13312
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Manager Decision": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Check: Rejected? ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: To HR": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Waiting HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Waiting HR": {
+      "main": [
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Rejected? ": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check: Needs HR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Needs HR?": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: To HR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: To HR": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: To HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: To HR": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: To HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: To HR": {
+      "main": [
+        [
+          {
+            "node": "Email: To HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Waiting HR": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Waiting HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Waiting HR": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Waiting HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Waiting HR": {
+      "main": [
+        [
+          {
+            "node": "Email: Waiting HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "37b669e7-2f83-4f4b-af0e-d8fab11159b0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0554ac5f13fea7b1063176ecf7df64ebcae2d0b2c896fdc0f2cac8a36246028e"
+  },
+  "id": "Nr36tx3arrurf3gZ",
+  "tags": []
+}

@@ -1,0 +1,480 @@
+{
+  "name": "wf7-leave-reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "a47d786e-4d47-4e75-b6aa-e80b5a691ee4",
+      "name": "Trigger: Daily at 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -3104,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c-has-leaves",
+              "leftValue": "={{ $json.leaves }}",
+              "rightValue": "={{ [] }}",
+              "operation": {
+                "type": "array",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2896,
+        240
+      ],
+      "id": "f817861c-58d7-4b8a-b41c-ccf798c5361a",
+      "name": "Check: Has Pending?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split pending leaves into individual items for batch processing\nconst leaves = $input.all();\nif (!leaves || leaves.length === 0) return [];\nconst items = leaves[0].json.leaves || [];\nreturn items.map(leave => ({ json: leave }));"
+      },
+      "id": "ffba3a8c-a32b-4a75-a5a6-9e7aa3448ef2",
+      "name": "Split Leaves",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2560,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const leave = $input.first().json;\nconst frontendUrl = $env.FRONTEND_URL || 'https://approvehub.internalautomation.io.vn';\n\n// Calculate days pending\nconst createdAt = new Date(leave.created_at || leave.createdAt || Date.now());\nconst now = new Date();\nconst daysPending = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));\n\n// Generate fresh approval tokens (7 days valid)\nconst tokenData = {\n  id: leave._id || leave.leaveId || leave.id,\n  type: 'approval',\n  action: 'approve',\n  exp: Date.now() + 7 * 24 * 60 * 60 * 1000\n};\nconst managerToken = Buffer.from(JSON.stringify(tokenData)).toString('base64');\nconst hrToken = Buffer.from(JSON.stringify({ ...tokenData, isHr: true })).toString('base64');\n\n// Determine recipient: if leave > 3 days and has HR email, route to HR; otherwise manager\nconst isHrLeave = (leave.leave_days || leave.leaveDays || 0) > 3;\nconst hasHrEmail = !!(leave.hrEmail || leave.hr_email);\n\nlet recipientEmail = leave.managerEmail || leave.manager_email || '';\nlet recipientName = leave.managerName || leave.manager_name || 'Quan ly';\nlet approvalLink = `${frontendUrl}/approval-page.html?token=${encodeURIComponent(managerToken)}&hr=false`;\nlet recipientType = 'manager';\n\nif (isHrLeave && hasHrEmail) {\n  recipientEmail = leave.hrEmail || leave.hr_email;\n  recipientName = 'Bo phan Nhan su';\n  approvalLink = `${frontendUrl}/approval-page.html?token=${encodeURIComponent(hrToken)}&hr=true`;\n  recipientType = 'hr';\n}\n\nconst fmt = (d) => {\n  if (!d) return '';\n  const pd = new Date(d);\n  if (isNaN(pd)) return d;\n  return pd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });\n};\n\nreturn [{ json: {\n  ...leave,\n  leaveDateDisplay: fmt(leave.leave_date || leave.leaveDate || ''),\n  daysPending,\n  recipientEmail,\n  recipientName,\n  recipientType,\n  approvalLink,\n  managerApprovalLink: `${frontendUrl}/approval-page.html?token=${encodeURIComponent(managerToken)}&hr=false`,\n  hrApprovalLink: `${frontendUrl}/approval-page.html?token=${encodeURIComponent(hrToken)}&hr=true`,\n  frontendUrl\n} }];"
+      },
+      "id": "1c6adca4-6b5d-4615-bf88-e831768af69f",
+      "name": "Prepare Reminder",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -2336,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c-days-pending",
+              "leftValue": "={{ $json.daysPending }}",
+              "rightValue": 3,
+              "operation": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2160,
+        -208
+      ],
+      "id": "93175546-5fa9-4cc0-a516-5aff2e9ebd5d",
+      "name": "Check: Urgent (>3 days)"
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { processed: $input.length } }];"
+      },
+      "id": "d28f8b1b-125e-4256-8a41-f21e6e6d7c0c",
+      "name": "Done",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript chuẩn (${...})\nconst to = item.recipientEmail;\nconst subject = `[ApproveHub] NHẮC NHỞ: Đơn nghỉ phép từ ${item.employee_name} đang chờ 4+ ngày`;\n\n// 3. Nội dung HTML với tiếng Việt có dấu và tông màu đỏ khẩn cấp (Urgent)\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .urgent-bar { background: #fff0f0; color: #c0392b; text-align: center; padding: 8px; font-weight: 700; font-size: 0.85rem; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #fee; color: #c0392b; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .cta-button { display: block; width: 100%; max-width: 240px; margin: 20px auto; padding: 14px 24px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: white !important; text-align: center; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 0.95rem; }\n  .days-badge { background: #f39c12; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"urgent-bar\">ĐƠN ĐANG CHỜ PHÊ DUYỆT QUÁ 3 NGÀY - CẦN XỬ LÝ NGAY</div>\n  <div class=\"header\"><h2>Nhắc nhở Phê duyệt Đơn nghỉ phép</h2></div>\n  <div class=\"content\">\n    <p>Kính gửi <strong>${item.recipientName}</strong>,</p>\n    <p style=\"margin-top:8px;\">Có đơn nghỉ phép từ <strong>${item.employee_name}</strong> đang chờ bạn phê duyệt đã quá <span class=\"days-badge\">${item.daysPending} ngày</span>.</p>\n    \n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Chờ Phê duyệt - Ưu tiên cao</span></div>\n    \n    <table class=\"details-table\">\n      <tr><td>Nhân viên</td><td><strong>${item.employee_name}</strong></td></tr>\n      <tr><td>Phòng ban</td><td>${item.department}</td></tr>\n      <tr><td>Ngày nghỉ</td><td>${item.leaveDateDisplay}</td></tr>\n      <tr><td>Số ngày</td><td>${item.leave_days} ngày</td></tr>\n      <tr><td>Lý do</td><td>${item.reason}</td></tr>\n      <tr><td>Trạng thái</td><td>Đang chờ ${item.recipientType === 'hr' ? 'HR' : 'Quản lý'} phê duyệt</td></tr>\n      <tr><td>Mã đơn</td><td>#${item._id || item.leaveId}</td></tr>\n    </table>\n    \n    <a href=\"${item.approvalLink}\" class=\"cta-button\">Phê duyệt ngay</a>\n    \n    <p style=\"margin-top:14px; font-size:0.82rem; color:#999; text-align:center;\">Link hết hạn sau 7 ngày. Vui lòng phê duyệt sớm nhất có thể để đảm bảo quyền lợi nhân viên.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// 4. Trả về kết quả cuối cùng\nreturn [{ \n  json: { \n    ...item, \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "c7c8db39-663a-4f01-9c33-c68d1b302a5a",
+      "name": "Prep: Email: Urgent Reminder",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "dd83e7f8-131d-4c1d-9896-f5ba5b864976",
+      "name": "Token: Email: Urgent Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1664,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Urgent Reminder').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "9b7fa878-827b-44fa-918b-01cf9a50f266",
+      "name": "Encode: Email: Urgent Reminder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1472,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "9d8ddcbc-7b1d-4b71-8b58-a5ea2f02b9fb",
+      "name": "Email: Urgent Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1248,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript chuẩn (${...})\nconst to = item.recipientEmail;\nconst subject = `[ApproveHub] Đơn nghỉ phép từ ${item.employee_name} - Chờ ${item.daysPending} ngày`;\n\n// 3. Nội dung HTML với tiếng Việt có dấu và tông màu Tím chuyên nghiệp\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #6610f2, #5a0fd4); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #f3ebff; color: #6610f2; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .cta-button { display: block; width: 100%; max-width: 240px; margin: 20px auto; padding: 14px 24px; background: linear-gradient(135deg, #6610f2, #5a0fd4); color: white !important; text-align: center; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 0.95rem; }\n  .days-badge { background: #f39c12; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\"><h2>Nhắc nhở Phê duyệt Đơn nghỉ phép</h2></div>\n  <div class=\"content\">\n    <p>Kính gửi <strong>${item.recipientName}</strong>,</p>\n    <p style=\"margin-top:8px;\">Có đơn nghỉ phép từ <strong>${item.employee_name}</strong> đang chờ bạn phê duyệt <span class=\"days-badge\">${item.daysPending} ngày</span>.</p>\n    \n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Đang chờ Phê duyệt</span></div>\n    \n    <table class=\"details-table\">\n      <tr><td>Nhân viên</td><td><strong>${item.employee_name}</strong></td></tr>\n      <tr><td>Phòng ban</td><td>${item.department}</td></tr>\n      <tr><td>Ngày nghỉ</td><td>${item.leaveDateDisplay}</td></tr>\n      <tr><td>Số ngày</td><td>${item.leave_days} ngày</td></tr>\n      <tr><td>Lý do</td><td>${item.reason}</td></tr>\n      <tr><td>Mã đơn</td><td>#${item._id || item.leaveId}</td></tr>\n    </table>\n    \n    <a href=\"${item.approvalLink}\" class=\"cta-button\">Phê duyệt ngay</a>\n    \n    <p style=\"margin-top:14px; font-size:0.82rem; color:#999; text-align:center;\">Đường dẫn hết hạn sau 7 ngày. Vui lòng xử lý sớm để đảm bảo tiến độ công việc.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// 4. Trả về kết quả cuối cùng\nreturn [{ \n  json: { \n    ...item, \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "a05ca6e4-5a27-40fe-916c-0da2b73d067e",
+      "name": "Prep: Email: Normal Reminder",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1920,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "48b0ac90-2358-453f-827e-9a788f411f8b",
+      "name": "Token: Email: Normal Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1680,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Normal Reminder').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "6c37ab92-c4a3-45fd-bb5a-c4d45f4a9336",
+      "name": "Encode: Email: Normal Reminder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1488,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "164bf1d2-604d-4e72-af2e-510af4eb9bd8",
+      "name": "Email: Normal Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1216,
+        32
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger: Daily at 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Check: Has Pending?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Has Pending?": {
+      "main": [
+        [
+          {
+            "node": "Split Leaves",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Leaves": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reminder": {
+      "main": [
+        [
+          {
+            "node": "Check: Urgent (>3 days)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Urgent (>3 days)": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Urgent Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep: Email: Normal Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Urgent Reminder": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Normal Reminder": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Urgent Reminder": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Urgent Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Urgent Reminder": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Urgent Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Urgent Reminder": {
+      "main": [
+        [
+          {
+            "node": "Email: Urgent Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Normal Reminder": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Normal Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Normal Reminder": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Normal Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Normal Reminder": {
+      "main": [
+        [
+          {
+            "node": "Email: Normal Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "15cc19d2-d58d-4152-92bc-2cf00f98104b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0554ac5f13fea7b1063176ecf7df64ebcae2d0b2c896fdc0f2cac8a36246028e"
+  },
+  "id": "GwWoBwsFJ3j8tOep",
+  "tags": []
+}

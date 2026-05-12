@@ -1,0 +1,574 @@
+{
+  "name": "wf4-auto-approve",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auto-approve",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "3007228c-8704-4d7c-bd22-825856b03531",
+      "name": "Webhook: Auto Approve",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -10048,
+        6624
+      ],
+      "webhookId": "wf4-auto-approve"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $input.first().json.body || $input.first().json;\nconst headers = $input.first().json.headers || {};\nconst authHeader = headers.authorization || '';\n\nconst rawDate = (body.leave_date || body.leaveDate || '').trim();\nconst rawEndDate = body.end_date || body.endDate || '';\nconst fmt = (d) => {\n  if (!d) return '';\n  const pd = new Date(d);\n  if (isNaN(pd)) return d;\n  return pd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });\n};\n\nreturn [{ json: {\n  token: authHeader.replace('Bearer ', ''),\n  leaveId: body.leaveId || body._id || '',\n  leave_date: rawDate,\n  end_date: rawEndDate,\n  leaveDateDisplay: fmt(rawDate),\n  endDateDisplay: fmt(rawEndDate),\n  leave_days: parseInt(body.leave_days || body.leaveDays || 1),\n  reason: body.reason || '',\n  employee_email: body.employee_email || body.employeeEmail || '',\n  employee_name: body.employee_name || body.employeeName || '',\n  department: body.department || '',\n  managerEmail: body.managerEmail || '',\n  hrEmail: body.hrEmail || '',\n  managerApprovalToken: body.managerApprovalToken || '',\n  hrApprovalToken: body.hrApprovalToken || '',\n  backendUrl: 'http://backend:3001/api' \n} }];"
+      },
+      "id": "8fc67bba-34e6-4596-b352-cac36264cde8",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -9808,
+        6624
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ban la AI assistant trong he thong QUAN LY NGHI PHEP TU DONG - ApproveHub.\n\n## NHIEM VU:\nDựa vào các quy tắc dưới đây, BẠN HÃY TỰ ĐÁNH GIÁ và đưa ra quyết định DUYET (approve) hoac TU CHOI (reject) cho đơn xin nghỉ phép 1 ngày.\nTUYỆT ĐỐI KHÔNG VIẾT MÃ CODE. BẠN PHẢI ĐÓNG VAI LÀ MỘT HỆ THỐNG XỬ LÝ DỮ LIỆU.\n\n## QUY TAC DUYET (approve):\n- Ly do hop ly: kham benh, viec gia dinh khan cap, hen bac si, su kien quan trong\n- Ly do cu the, ro rang\n- Khong trung ngay le/cuoi tuan (neu biet)\n\n## QUY TAC TU CHOI (reject):\n- Ly do mo ho, khong cu the (vd: \"nghi choi\", \"ban viec\", \"viec ca nhan\")\n- Ly do vi pham quy dinh cong ty\n\n## INPUT TỪ NGƯỜI DÙNG:\n- Nhan vien: {{ $json.employee_name }}\n- Phong ban: {{ $json.department }}\n- Ngay nghi: {{ $json.leave_date }}\n- So ngay: {{ $json.leave_days }}\n- Ly do: {{ $json.reason }}\n\n## OUTPUT FORMAT (BAT BUOC):\nBan CHI DUOC PHEP tra ve duy nhat mot khoi JSON nhu mau duoi day, KHONG dung markdown (khong dung ```json), khong giai thich, khong viet them bat ky chu nao khac ra ngoai khoi JSON.\n\nMau neu duyet:\n{\"decision\": \"approve\", \"reason\": \"Ly do cua ban viet bang tieng Viet (1-2 cau)\"}\n\nMau neu tu choi:\n{\"decision\": \"reject\", \"reason\": \"Ly do cua ban viet bang tieng Viet (1-2 cau)\"}",
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -9568,
+        6624
+      ],
+      "id": "62685c73-e13e-4e3b-bcf0-017b4489cbce",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -9568,
+        6816
+      ],
+      "id": "94948301-08fa-43b4-adcd-1adf9f415c19",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5FCVc5wZfN7uKubD",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const llmOutput = $input.first().json;\nconst content = llmOutput.text || llmOutput.message || llmOutput.response || JSON.stringify(llmOutput);\n\nlet decision = 'approve';\nlet reason = 'Khong the phan tich AI response. Mac dinh duyet vi la nghi 1 ngay.';\n\ntry {\n  const jsonMatch = content.match(/\\{[\\s\\S]*?\\}/);\n  if (jsonMatch) {\n    const parsed = JSON.parse(jsonMatch[0]);\n    decision = (parsed.decision || 'approve').toLowerCase().trim();\n    reason = parsed.reason || 'Khong co ly do';\n  }\n} catch (e) {}\n\nconst input = $('Parse Input').first().json;\nreturn [{ json: {\n  decision,\n  reason,\n  rawResponse: content,\n  leaveId: input.leaveId,\n  leave_date: input.leave_date,\n  leaveDateDisplay: input.leaveDateDisplay,\n  end_date: input.end_date,\n  endDateDisplay: input.endDateDisplay,\n  leave_days: input.leave_days,\n  employee_name: input.employee_name,\n  employee_email: input.employee_email,\n  department: input.department,\n  reason_original: input.reason,\n  managerEmail: input.managerEmail,\n  hrEmail: input.hrEmail,\n  managerApprovalToken: input.managerApprovalToken,\n  hrApprovalToken: input.hrApprovalToken,\n  backendUrl: input.backendUrl,\n  token: input.token\n} }];"
+      },
+      "id": "833b278c-93c6-4f50-a968-0583264c5c3a",
+      "name": "Parse LLM Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -9264,
+        6624
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}/approval/auto-approve",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-n8n-secret",
+              "value": "approvehubs3cr3t   "
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "leaveId",
+              "value": "={{ $json.leaveId }}"
+            },
+            {
+              "name": "aiDecision",
+              "value": "={{ $json.decision }}"
+            },
+            {
+              "name": "aiReason",
+              "value": "={{ $json.reason }}"
+            },
+            {
+              "name": "approvedBy",
+              "value": "AI_GEMINI_AUTO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1c3acf9-1018-42c0-a050-059be5316078",
+      "name": "HTTP: Approve/Reject",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -9024,
+        6624
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const resp = $input.first().json;\nconst data = resp.body || resp;\nconst input = $('Parse LLM Response').first().json;\nreturn [{ json: {\n  ...input,\n  backendStatus: data.status || '',\n  message: data.message || ''\n} }];"
+      },
+      "id": "40bdebad-04af-447c-b324-f21381249eb6",
+      "name": "Parse Backend Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -8800,
+        6624
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"status\": \"{{ $json.decision }}\",\n  \"ai_reason\": \"{{ $json.reason }}\"\n}",
+        "options": {}
+      },
+      "id": "ddc721a6-5d85-4ed0-81e6-a74e55165eb9",
+      "name": "Respond: Done",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -7184,
+        6672
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b647c457-e346-4288-be59-c8ae728c28cc",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -8592,
+        6624
+      ],
+      "id": "187f1346-db99-41a1-8849-f2be8d8ef321",
+      "name": "Check: Email Type"
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Gán các biến chính (Sửa lỗi chính tả \"nhỉ\" thành \"nghỉ\" ở subject)\nconst to = item.employee_email;\nconst subject = `Đơn nghỉ phép 1 ngày đã được AI phê duyệt!`;\n\n// 3. Nội dung HTML (Thay toàn bộ {{ $json.x }} bằng ${item.x})\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; }\n  .badge { display: inline-block; padding: 5px 12px; background: #d4edda; color: #155724; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .ai-box { background: #f0f7ff; border-left: 4px solid #007bff; padding: 12px 16px; margin-top: 14px; border-radius: 0 8px 8px 0; font-size: 0.88rem; font-style: italic; color: #0056b3; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Đơn nghỉ phép đã được phê duyệt!</h2></div>\n    <div class=\"content\">\n      <p>Xin chào <strong>${item.employee_name}</strong>,</p>\n      <p style=\"margin-top:8px;\">Đơn nghỉ phép 1 ngày của bạn đã được <strong>AI xem xét và phê duyệt</strong>.</p>\n      <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Đã duyệt (AI System)</span></div>\n      <table class=\"details-table\">\n        <tr><td>Ngày nghỉ</td><td><strong>${item.leaveDateDisplay}</strong></td></tr>\n        <tr><td>Ngày kết thúc</td><td><strong>${item.endDateDisplay}</strong></td></tr>\n        <tr><td>Số ngày</td><td>${item.leave_days} ngày</td></tr>\n        <tr><td>Phòng ban</td><td>${item.department}</td></tr>\n      </table>\n      <div class=\"ai-box\"><strong>Phân tích từ AI:</strong> ${item.reason}</div>\n      <p style=\"margin-top:16px; font-size:0.85rem; color:#888;\"><em>* Đơn này được xử lý tự động vì là nghỉ phép 1 ngày theo quy định công ty.</em></p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Powered by n8n & Gemini AI</div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// 4. Trả về kết quả cho node tiếp theo\nreturn [{ \n  json: { \n    ...item, \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "c5e946a0-6054-4b15-8358-8274c2fc9337",
+      "name": "Prep: Email: Approved",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -8304,
+        6352
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/internal/gmail/access-token?email={{ $json.employee_email }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "0c3c1ece-3380-41d1-bbfe-fb7e2003c18e",
+      "name": "Token: Email: Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -8080,
+        6352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Approved').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "8538eca2-fec9-42f7-af32-03a4c293cf4b",
+      "name": "Encode: Email: Approved",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -7840,
+        6352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c4276e09-4b31-467d-a43b-a125ce231a1d",
+      "name": "Email: Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -7600,
+        6352
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Gán các biến chính (Sửa lỗi chính tả \"nhỉ\" thành \"nghỉ\" ở subject)\nconst to = item.employee_email;\nconst subject = `Đơn nghỉ phép 1 ngày đã bị AI từ chối!`;\n\n// 3. Nội dung HTML (Thay toàn bộ {{ $json.x }} bằng ${item.x})\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; }\n  .badge { display: inline-block; padding: 5px 12px; background: #fdeaea; color: #721c24; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .reject-box { background: #fff8f8; border-left: 4px solid #dc3545; padding: 12px 16px; margin-top: 14px; border-radius: 0 8px 8px 0; color: #721c24; font-size: 0.88rem; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Đơn nghỉ phép bị từ chối</h2></div>\n    <div class=\"content\">\n      <p>Xin chào <strong>${item.employee_name}</strong>,</p>\n      <p style=\"margin-top:8px;\">Đơn nghỉ phép 1 ngày của bạn đã bị <strong style=\"color:#dc3545;\">AI từ chối</strong>.</p>\n      <div style=\"text-align:center; margin:18px 0;\"><span class=\"badge\">Bị từ chối</span></div>\n      <table class=\"details-table\">\n        <tr><td>Ngày nghỉ</td><td>${item.leaveDateDisplay}</td></tr>\n        <tr><td>Ngày kết thúc</td><td>${item.endDateDisplay}</td></tr>\n        <tr><td>Lý do bạn đưa</td><td>${item.reason_original || 'Không có lý do cụ thể'}</td></tr>\n      </table>\n      <div class=\"reject-box\"><strong>Lý do từ chối (AI phân tích):</strong> ${item.reason}</div>\n      <p style=\"margin-top:16px; font-size:0.9rem; color:#666;\">Nếu cần thêm thông tin, vui lòng liên hệ Manager để được hỗ trợ thêm.</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Powered by n8n & Gemini AI</div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// 4. Trả về kết quả cho node tiếp theo\nreturn [{ \n  json: { \n    ...item, \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "3ce28f01-0660-4f2a-b3c8-096ee4a99914",
+      "name": "Prep: Email: Rejected",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -8320,
+        6912
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/internal/gmail/access-token?email={{ $json.employee_email }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "11d24430-9cc9-4cf8-8923-e1cd6ced7171",
+      "name": "Token: Email: Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -8112,
+        6912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Rejected').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "3d96db1a-253e-4255-bc40-dffec296bb08",
+      "name": "Encode: Email: Rejected",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -7936,
+        6912
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a881b08a-0c6e-4fee-b596-93883e124d08",
+      "name": "Email: Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -7632,
+        6912
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Auto Approve": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse LLM Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LLM Response": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Approve/Reject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Approve/Reject": {
+      "main": [
+        [
+          {
+            "node": "Parse Backend Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Backend Response": {
+      "main": [
+        [
+          {
+            "node": "Check: Email Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Email Type": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f14efcc9-9e1c-46a7-9c51-9d50bff81601",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0554ac5f13fea7b1063176ecf7df64ebcae2d0b2c896fdc0f2cac8a36246028e"
+  },
+  "id": "o3tBWNgjwawLFjPv",
+  "tags": []
+}

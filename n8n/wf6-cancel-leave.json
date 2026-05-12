@@ -1,0 +1,566 @@
+{
+  "name": "wf6-cancel-leave",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cancel-leave",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2e59f357-ef0a-4018-84b4-8d4df4929acf",
+      "name": "Webhook: Cancel Leave",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2560,
+        2144
+      ],
+      "webhookId": "wf6-cancel-leave"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst headers = item.headers || {};\nconst authHeader = headers.authorization || '';\n\nconst rawDate = (body.leaveDate || body.leave_date || '').trim();\nconst fmt = (d) => {\n  if (!d) return '';\n  const pd = new Date(d);\n  if (isNaN(pd)) return d;\n  return pd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });\n};\n\nreturn [{ json: {\n  token: authHeader.replace('Bearer ', ''),\n  leaveId: body.leaveId || '',\n  reason: body.reason || 'Huy boi nhan vien',\n  employeeName: body.employeeName || body.employee_name || '',\n  employeeEmail: body.employeeEmail || body.employee_email || '',\n  leaveDate: rawDate,\n  leaveDateDisplay: fmt(rawDate),\n  leaveDays: parseInt(body.leaveDays || body.leave_days || 0),\n  department: body.department || '',\n  managerEmail: body.managerEmail || '',\n  hrEmail: body.hrEmail || '',\n  frontendUrl: 'https://approvehub.internalautomation.io.vn' \n} }];"
+      },
+      "id": "351846ee-2a4a-46b1-816e-c779ae7fe083",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -2320,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const input = $('Parse Input').first().json;\n// Backend already cancelled the leave. wf6 only sends notification emails.\nconst needsHrNotify = input.hrEmail && input.hrEmail !== '';\n\nreturn [{ json: {\n  ...input,\n  needsHrNotify,\n  hrApprovalLink: needsHrNotify\n    ? `${input.frontendUrl}/approval-page.html?token=${encodeURIComponent(input.hrApprovalToken || '')}&hr=true`\n    : ''\n} }];"
+      },
+      "id": "5fc68248-53c1-43da-9f84-a24fae4ee7be",
+      "name": "Prepare Emails",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"status\": \"cancelled\",\n  \"message\": \"Don nghi phep da duoc huy\"\n}",
+        "options": {}
+      },
+      "id": "7caf6139-1dd1-4abb-a20f-ab3435f90873",
+      "name": "Respond: Done",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        2320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c8b1ee97-06d3-46a8-bc6d-c580f7916860",
+              "leftValue": "={{ $('Prepare Emails').first().json.needsHrNotify }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -176,
+        2144
+      ],
+      "id": "9c59b083-fd7f-40cf-b3fb-0d4e3f00ffa2",
+      "name": "Check: Notify HR?"
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript chuẩn (${...})\nconst to = item.employeeEmail;\nconst subject = `[ApproveHub] Xác nhận hủy đơn nghỉ phép`;\n\n// 3. Nội dung HTML với tiếng Việt có dấu và màu xám trung tính (Neutral) cho việc hủy đơn\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #6c757d, #545b62); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #e9ecef; color: #495057; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .cancel-box { background: #fffaf0; border-left: 4px solid #fdcb6e; padding: 12px 16px; margin-top: 14px; border-radius: 0 8px 8px 0; font-size: 0.88rem; color: #856404; }\n  .info-card { background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; padding: 14px; margin-top: 14px; text-align: center; font-size: 0.88rem; color: #666; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\"><h2>Xác nhận Hủy đơn thành công</h2></div>\n  <div class=\"content\">\n    <p>Chào <strong>${item.employeeName}</strong>,</p>\n    <p style=\"margin-top:8px;\">Yêu cầu hủy đơn nghỉ phép của bạn đã được xử lý thành công trên hệ thống.</p>\n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Đã hủy đơn</span></div>\n    <table class=\"details-table\">\n      <tr><td>Ngày nghỉ</td><td>${item.leaveDateDisplay}</td></tr>\n      <tr><td>Số ngày</td><td>${item.leaveDays} ngày</td></tr>\n      <tr><td>Mã đơn</td><td>#${item.leaveId}</td></tr>\n    </table>\n    <div class=\"cancel-box\"><strong>Lý do hủy:</strong> ${item.reason || 'Người dùng yêu cầu hủy'}</div>\n    <div class=\"info-card\">Nếu đơn này đã được trừ vào quỹ phép trước đó, số ngày phép sẽ được tự động hoàn lại vào tài khoản của bạn.</div>\n    <p style=\"margin-top:16px; font-size:0.88rem; color:#666;\">Nếu cần thay đổi lịch nghỉ hoặc tạo kế hoạch mới, vui lòng thực hiện lại trên hệ thống ApproveHub.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// 4. Trả về kết quả cuối cùng\nreturn [{ \n  json: { \n    ...item, \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "2ca837f9-9ccc-4587-a19d-52254629c60a",
+      "name": "Prep: Email: Cancel to Employee",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "6ed5fac4-55d9-4998-8a8e-85bb627ba634",
+      "name": "Token: Email: Cancel to Employee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1648,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Cancel to Employee').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "48fe8fdb-1c42-4aa5-8cbe-80c169e84ec0",
+      "name": "Encode: Email: Cancel to Employee",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1424,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "6aec1779-0060-4819-ac75-9fcbce6b082c",
+      "name": "Email: Cancel to Employee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1200,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node 'Prepare Emails' (Sử dụng Absolute Reference chuẩn)\nconst inputData = $('Prepare Emails').first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript chuẩn (${...})\nconst to = inputData.managerEmail;\nconst subject = `[ApproveHub] Nhân viên ${inputData.employeeName} hủy đơn nghỉ phép`;\n\n// 3. Nội dung HTML với tiếng Việt có dấu và màu sắc trung tính (Xám/Vàng) cho việc hủy đơn\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #6c757d, #545b62); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #e9ecef; color: #495057; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .cancel-box { background: #fffaf0; border-left: 4px solid #fdcb6e; padding: 12px 16px; margin-top: 14px; border-radius: 0 8px 8px 0; font-size: 0.88rem; color: #856404; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\"><h2>Thông báo Hủy đơn Nghỉ phép</h2></div>\n  <div class=\"content\">\n    <p>Kính gửi <strong>${inputData.managerEmail || 'Bộ phận Quản lý'}</strong>,</p>\n    <p style=\"margin-top:8px;\">Nhân viên <strong>${inputData.employeeName}</strong> đã thực hiện hủy đơn nghỉ phép trên hệ thống.</p>\n    \n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Đơn đã hủy</span></div>\n    \n    <table class=\"details-table\">\n      <tr><td>Nhân viên</td><td><strong>${inputData.employeeName}</strong></td></tr>\n      <tr><td>Ngày nghỉ</td><td>${inputData.leaveDateDisplay || inputData.leaveDate}</td></tr>\n      <tr><td>Số ngày</td><td>${inputData.leaveDays} ngày</td></tr>\n      <tr><td>Mã đơn</td><td>#${inputData.leaveId}</td></tr>\n    </table>\n    \n    <div class=\"cancel-box\"><strong>Lý do hủy:</strong> ${inputData.reason || 'Nhân viên chủ động hủy đơn'}</div>\n    \n    <p style=\"margin-top:14px; font-size:0.85rem; color:#888;\">Đơn này đã được loại bỏ khỏi danh sách chờ phê duyệt và không cần xử lý thêm.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\n// 4. Trả về kết quả cuối cùng theo cấu trúc yêu cầu\nreturn [{ \n  json: { \n    ...($json || {}), \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "4b728fb6-bf02-47cb-80a9-2b6b40e5abdc",
+      "name": "Prep: Email: Cancel to Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $('Prepare Emails').item.json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "4c18ba05-f8fe-4caf-a3cf-92e066d74d45",
+      "name": "Token: Email: Cancel to Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -768,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Cancel to Manager').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "8485743b-2039-4ad8-98dd-cd5b7f7dd986",
+      "name": "Encode: Email: Cancel to Manager",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "4f4aedf6-7c9c-4940-8ca1-e9c80e4ca56c",
+      "name": "Email: Cancel to Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node 'Prepare Emails' (Sử dụng Absolute Reference chuẩn)\nconst inputData = $('Prepare Emails').first().json;\n\n// 2. Gán các biến chính bằng cú pháp JavaScript chuẩn (${...})\nconst to = inputData.hrEmail;\nconst subject = `[ApproveHub] Nhân viên ${inputData.employeeName} hủy đơn nghỉ phép - Cần cập nhật`;\n\n// 3. Nội dung HTML với tiếng Việt có dấu và màu sắc trung tính (Xám/Vàng) \nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #6c757d, #545b62); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #e9ecef; color: #495057; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .cancel-box { background: #fffaf0; border-left: 4px solid #fdcb6e; padding: 12px 16px; margin-top: 14px; border-radius: 0 8px 8px 0; font-size: 0.88rem; color: #856404; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\"><h2>Thông báo Hủy đơn Nghỉ phép</h2></div>\n  <div class=\"content\">\n    <p>Kính gửi <strong>Bộ phận Nhân sự (HR)</strong>,</p>\n    <p style=\"margin-top:8px;\">Nhân viên <strong>${inputData.employeeName}</strong> đã thực hiện hủy đơn nghỉ phép. Đơn này trước đây đã được HR phê duyệt.</p>\n    \n    <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Đơn đã hủy bởi nhân viên</span></div>\n    \n    <table class=\"details-table\">\n      <tr><td>Nhân viên</td><td><strong>${inputData.employeeName}</strong></td></tr>\n      <tr><td>Phòng ban</td><td>${inputData.department}</td></tr>\n      <tr><td>Ngày nghỉ</td><td>${inputData.leaveDateDisplay || inputData.leaveDate}</td></tr>\n      <tr><td>Số ngày</td><td>${inputData.leaveDays} ngày</td></tr>\n      <tr><td>Lý do hủy</td><td>${inputData.reason || 'Nhân viên chủ động hủy đơn'}</td></tr>\n      <tr><td>Mã đơn</td><td>#${inputData.leaveId}</td></tr>\n    </table>\n    \n    <div class=\"cancel-box\">\n        <strong>Lưu ý cho HR:</strong><br>\n        Đơn này đã được hủy trên hệ thống. Nếu ngày nghỉ đã được trừ vào quỹ phép của năm, vui lòng kiểm tra và hoàn trả lại cho nhân viên.\n    </div>\n    \n    <p style=\"margin-top:14px; font-size:0.85rem; color:#888;\">Thông báo này được gửi tự động từ hệ thống ApproveHub.</p>\n  </div>\n  <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n</div>\n</body>\n</html>`;\n\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\n// 4. Trả về kết quả cuối cùng theo cấu trúc yêu cầu\nreturn [{ \n  json: { \n    ...($json || {}), \n    _to: to, \n    _subject: subject, \n    _htmlBody: htmlBody, \n    backendUrl \n  } \n}];"
+      },
+      "id": "51e98574-a042-4d4b-914a-4992813fc522",
+      "name": "Prep: Email: Cancel to HR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        112,
+        1968
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $('Prepare Emails').item.json.employeeEmail }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "f3f056d1-75d8-4912-a9dd-3b8af1868a6d",
+      "name": "Token: Email: Cancel to HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        352,
+        1968
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Cancel to HR').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "377a7d20-73cd-4511-953e-e11c53d160f9",
+      "name": "Encode: Email: Cancel to HR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        1968
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fcc8127b-b0eb-45b3-af7a-f214b0a6c487",
+      "name": "Email: Cancel to HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        832,
+        1968
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Cancel Leave": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Emails": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Cancel to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Cancel to Employee": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Cancel to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Cancel to Manager": {
+      "main": [
+        [
+          {
+            "node": "Check: Notify HR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Cancel to HR": {
+      "main": [
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Notify HR?": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Cancel to HR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Cancel to Employee": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Cancel to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Cancel to Employee": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Cancel to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Cancel to Employee": {
+      "main": [
+        [
+          {
+            "node": "Email: Cancel to Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Cancel to Manager": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Cancel to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Cancel to Manager": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Cancel to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Cancel to Manager": {
+      "main": [
+        [
+          {
+            "node": "Email: Cancel to Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Cancel to HR": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Cancel to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Cancel to HR": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Cancel to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Cancel to HR": {
+      "main": [
+        [
+          {
+            "node": "Email: Cancel to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "82b2405e-9a2a-4915-878c-b713b33d2510",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0554ac5f13fea7b1063176ecf7df64ebcae2d0b2c896fdc0f2cac8a36246028e"
+  },
+  "id": "AS7Ufc0jMstTi7o5",
+  "tags": []
+}
