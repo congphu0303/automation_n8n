@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node src/index.js"
+    "start": "node -r dotenv/config src/index.js",
+    "dev": "nodemon -e js,json -x \"DOTENV_CONFIG_PATH=.env.local node src/index.js\"",
+    "dev:node": "DOTENV_CONFIG_PATH=.env.local node src/index.js"
   },
   "keywords": [],
   "author": "",
@@ -16,8 +17,13 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
+    "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.1.1",
     "mongoose": "^9.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

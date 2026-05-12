@@ -40,6 +40,20 @@ const userSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+
+    // ─── Gmail OAuth2 ───
+    gmailRefreshToken: {
+      type: String,
+      default: null,
+    },
+    gmailConnected: {
+      type: Boolean,
+      default: false,
+    },
+    gmailEmail: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

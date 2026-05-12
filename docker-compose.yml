@@ -1,93 +1,175 @@
-version: '3.8'
+# ═══════════════════════════════════════════════════════════════════
+# ApproveHub - N8N-Centric Architecture
+# ═══════════════════════════════════════════════════════════════════
+#
+# Architecture:
+#   ┌──────────────────────────────────────────────────────────────┐
+#   │  React Vite Frontend (:3000)                              │
+#   │  - SPA: Login, Dashboard, Leave, Meeting, Settings         │
+#   └──────────────────┬───────────────────────────────────────┘
+#                       │ JWT Bearer
+#                       ▼
+#   ┌──────────────────────────────────────────────────────────────┐
+#   │  Express Backend (:3001) - DATA LAYER ONLY                   │
+#   │  - CRUD operations on MongoDB                                │
+#   │  - NO business logic, NO triggerN8n                         │
+#   │  - N8N calls /api/internal/* to manage data                  │
+#   │  - MongoDB Atlas (Cloud)                                    │
+#   └──────────────────┬──────────────────────────────────────┘
+#                       │ HTTP (internal)
+#                       ▼
+#   ┌──────────────────────────────────────────────────────────────┐
+#   │  N8N Workflow Engine (:5678) - ORCHESTRATOR                   │
+#   │  • Receives requests from frontend (via backend)              │
+#   │  • Decides approval flow: 1-day → AI, ≤3 → Manager, >3 → HR │
+#   │  • Calls /api/internal/* to save/update data                 │
+#   │  • Sends HTML emails (Gmail OAuth)                          │
+#   │  • Handles approval callback from email links                 │
+#   │  PostgreSQL (workflow data)                                  │
+#   └──────────────────────────────────────────────────────────────┘
+#
+# Usage:
+#   docker-compose up -d           Start all services
+#   docker-compose logs -f n8n     View N8N logs
+#   docker-compose logs -f backend  View backend logs
+# ═══════════════════════════════════════════════════════════════════
+
 
 services:
-  # ─── 1. POSTGRES (Dữ liệu của n8n) ───
-  postgres:
-    image: postgres:15
-    container_name: approval_postgres
-    restart: always
-    environment:
-      - POSTGRES_DB=n8n
-      - POSTGRES_USER=n8n
-      - POSTGRES_PASSWORD=n8npass
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - approval_network
 
-  # ─── 2. N8N ───
+  # ───────────────────────────────────────────────────────────────
+  # Frontend - Caddy (serve static HTML + API proxy)
+  # ───────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: approval_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - approvenet
+
+  # ───────────────────────────────────────────────────────────────
+  # Backend API - Data Layer Only
+  # ───────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: approval_backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - NODE_OPTIONS=--max-old-space-size=512
+      # MongoDB Atlas
+      - MONGO_URI=${MONGO_URI:-mongodb+srv://n8n:automation_n8n@cluster0.tywp9et.mongodb.net/approval_system?appName=Cluster0}
+      # JWT
+      - JWT_SECRET=${JWT_SECRET:-7f551b3f7f0980bb6e23ca3977c68846be0689b0222a0df8b556f8f1176bc5a7}
+      # URLs
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:3001}
+      # N8N secret (shared with N8N for internal API auth)
+      - N8N_SECRET_KEY=${N8N_SECRET_KEY:-approvehubs3cr3t}
+      # N8N URL (backend calls this to trigger workflows)
+      - N8N_URL=${N8N_URL:-http://n8n:5678}
+    mem_limit: 512m
+    networks:
+      - approvenet
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ───────────────────────────────────────────────────────────────
+  # N8N - Workflow Orchestrator (CENTER)
+  # ───────────────────────────────────────────────────────────────
   n8n:
     image: n8nio/n8n:latest
     container_name: approval_n8n
-    restart: always
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
     environment:
+      # N8N Basic Auth
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=admin123
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+      # Network
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      # Webhook URL - must be publicly accessible for Gmail OAuth callbacks
+      # In Docker: use n8n container hostname so containers can reach each other
+      # Override with your public domain/IP for production (e.g. https://n8n.yourdomain.com)
+      - WEBHOOK_URL=${WEBHOOK_URL:-https://n8n.internalautomation.io.vn}
+      # Memory & execution limits
+      - NODE_OPTIONS=--max-old-space-size=1024
+      - EXECUTIONS_MODE=regular
+      - EXECUTIONS_TIMEOUT=300
+      - WEBHOOK_TIMEOUT=60
+      # N8N Secret (same as backend for internal API auth)
+      - N8N_SECRET_KEY=${N8N_SECRET_KEY:-approvehubs3cr3t}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # Backend URL for N8N to call
+      - BACKEND_URL=${BACKEND_URL:-http://backend:3001}
+      # Frontend URL for N8N to generate approval links
+      - FRONTEND_URL=${FRONTEND_URL:-https://approvehub.internalautomation.io.vn}
+      # PostgreSQL for N8N workflow data
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=n8n
       - DB_POSTGRESDB_PASSWORD=n8npass
-      - N8N_HOST=n8n.internalautomation.io.vn
-      - N8N_PROTOCOL=https
-      - WEBHOOK_URL=https://n8n.internalautomation.io.vn/
+      - DB_POSTGRESDB_SCHEMA=public
+    mem_limit: 1g
     volumes:
       - n8n_data:/home/node/.n8n
+    networks:
+      - approvenet
     depends_on:
       - postgres
-    networks:
-      - approval_network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # ─── 3. FRONTEND ───
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: approval_frontend
-    restart: always
-    networks:
-      - approval_network
-
-  # ─── 4. BACKEND ───
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: approval_backend
-    env_file: ./backend/.env
+  # ───────────────────────────────────────────────────────────────
+  # PostgreSQL - N8N Database
+  # ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: approval_postgres
+    restart: unless-stopped
     environment:
-      - NODE_ENV=production
-    restart: always
-    networks:
-      - approval_network
-
-  # ─── 5. CADDY (Reverse Proxy + Auto SSL) ───
-  caddy:
-    image: caddy:2-alpine
-    container_name: approval_caddy
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8npass
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - backend
-      - n8n
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
-      - approval_network
+      - approvenet
 
+# ═══════════════════════════════════════════════════════════════════
+# Networks
+# ═══════════════════════════════════════════════════════════════════
+networks:
+  approvenet:
+    driver: bridge
+
+# ═══════════════════════════════════════════════════════════════════
+# Volumes
+# ═══════════════════════════════════════════════════════════════════
 volumes:
   n8n_data:
-  pgdata:
-  caddy_data:
-  caddy_config:
-
-networks:
-  approval_network:
-    driver: bridge
+    driver: local
+  postgres_data:
+    driver: local

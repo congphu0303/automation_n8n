@@ -5,7 +5,9 @@ const leaveRequestSchema = new mongoose.Schema(
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // Optional: N8N không truyền employeeId (user chưa login)
+      // Backend sẽ lookup bằng employeeEmail nếu cần
+      default: null,
     },
 
     employee_name: {
@@ -68,6 +70,16 @@ const leaveRequestSchema = new mongoose.Schema(
     },
     hrApproverEmail: {
       type: String,
+      default: null,
+    },
+
+    // Token expiry (set when token is generated)
+    managerTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    hrTokenExpiresAt: {
+      type: Date,
       default: null,
     },
 
@@ -154,6 +166,46 @@ const leaveRequestSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    // ─── Final timestamps ───
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+    rejectedAt: {
+      type: Date,
+      default: null,
+    },
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
+    // ─── Reminder ───
+    reminderCount: {
+      type: Number,
+      default: 0,
+    },
+
+    // ─── WF8 Resume Callback ───
+    wf8ResumeCallback: {
+      type: String,
+      default: null,
+    },
+    wf8ResumeUrl: {
+      type: String,
+      default: null,
+    },
+    wf8ResumedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ─── Resubmit (WF8 flow) ───
+    resubmittedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -163,8 +215,7 @@ const leaveRequestSchema = new mongoose.Schema(
 module.exports = mongoose.model("LeaveRequest", leaveRequestSchema);
 
 // Compound indexes cho các truy vấn phổ biến
+// NOTE: managerApprovalToken and hrApprovalToken already indexed via unique/sparse above
 leaveRequestSchema.index({ employeeId: 1, createdAt: -1 });
 leaveRequestSchema.index({ department: 1, manager_status: 1 });
-leaveRequestSchema.index({ managerApprovalToken: 1 });
-leaveRequestSchema.index({ hrApprovalToken: 1 });
 leaveRequestSchema.index({ status: 1, manager_status: 1, hr_status: 1 });
