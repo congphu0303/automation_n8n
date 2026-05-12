@@ -24,8 +24,9 @@ jobs:
           script: |
             cd /root
 
-            # Đảm bảo pull code mới nhất từ nhánh main
-            git pull origin main
+            # Đảm bảo code mới nhất từ nhánh main (xử lý cả force-push)
+            git fetch origin main
+            git reset --hard origin/main
 
             # Ép Docker build lại image mới (tránh dùng cache cũ)
             docker compose build --no-cache backend frontend

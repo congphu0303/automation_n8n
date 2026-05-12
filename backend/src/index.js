@@ -11,6 +11,7 @@ const usersRoutes = require("./routes/users");
 const leaveRoutes = require("./routes/leave");
 const approvalRoutes = require("./routes/approval");
 const meetingRoutes = require("./routes/meeting");
+const meetingRoomMongoRoutes = require("./routes/meetingRoomMongo");
 const internalRoutes = require("./routes/internal");
 const gmailRoutes = require("./routes/gmail");
 
@@ -67,6 +68,9 @@ app.use("/api/approval", approvalRoutes);
 // Note: /api/rooms was previously mounted here too, causing duplicate routes.
 // Removed to avoid conflict. Use /api/meeting-room for all meeting endpoints.
 app.use("/api/meeting-room", meetingRoutes);
+
+// Meeting Room Mongo API (for N8N workflows)
+app.use("/api/meeting-room-mongo", meetingRoomMongoRoutes);
 
 // Internal API (for N8N workflows)
 app.use("/api/internal", internalRoutes);

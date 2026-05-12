@@ -32,8 +32,7 @@ const bookingSchema = new mongoose.Schema(
 
     // Phòng
     room_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Room",
+      type: String,
       required: true,
     },
 
