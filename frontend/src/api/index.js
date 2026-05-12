@@ -50,7 +50,30 @@ export const autoApproveCallback = (data) => api.post('/approval/auto-approve', 
 export const getRooms = () => api.get('/rooms');
 export const getRoomSlots = (roomId, date) => api.get(`/rooms/${roomId}/slots`, { params: { date } });
 export const getBookings = () => api.get('/meeting-room');
-export const createBooking = (data) => api.post('/meeting-room/book', data);
+export const createBooking = async (data) => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const payload = {
+    bookingId: 'BK-' + Date.now(),
+    requesterId: user._id || user.id || '',
+    requesterName: user.name || '',
+    requesterEmail: user.email || '',
+    department: user.department || '',
+    roomId: data.room_id,
+    roomName: data.room_name,
+    roomCapacity: 0,
+    meetingDate: data.meeting_date,
+    startTime: data.start_time,
+    endTime: data.end_time,
+    durationMinutes: 60,
+    purpose: data.purpose,
+    attendees: data.attendees || 1,
+    priority: data.priority || 'normal',
+    notes: data.notes || '',
+    equipmentNeeded: [],
+    managerEmail: user.email || '',
+  };
+  return axios.post('https://n8n.internalautomation.io.vn/webhook/nhan-yeu-cau-dat-phong', payload);
+};
 export const cancelBooking = (bookingId, reason) => api.post('/meeting-room/cancel', { booking_id: bookingId, reason });
 export const syncBookingStatus = (data) => api.post('/meeting-room/sync-status', data);
 
