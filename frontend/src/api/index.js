@@ -72,7 +72,15 @@ export const createBooking = async (data) => {
   };
   return axios.post('//n8n.internalautomation.io.vn/webhook/nhan-yeu-cau-dat-phong', payload);
 };
-export const cancelBooking = (bookingId, reason) => api.post('/meeting-room/cancel', { booking_id: bookingId, reason });
+export const cancelBooking = async (bookingId, reason) => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return axios.post('//n8n.internalautomation.io.vn/webhook/huy-dat-phong', {
+    booking_id: bookingId,
+    reason,
+    requesterEmail: user.email || '',
+    requesterName: user.name || '',
+  });
+};
 export const syncBookingStatus = (data) => api.post('/meeting-room/sync-status', data);
 
 export const getManagerEmails = () => api.get('/settings/manager-emails');
