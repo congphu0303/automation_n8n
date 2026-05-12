@@ -1,0 +1,88 @@
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════════════
+# LOCAL DEVELOPMENT - N8N + PostgreSQL only
+# Backend and Frontend run directly on the host machine (npm run dev)
+# ═══════════════════════════════════════════════════════════════════
+#
+# Run:
+#   docker compose -f docker-compose.local.yml up -d
+#
+# N8N Dashboard: http://localhost:5678
+# Backend:       http://localhost:3001  (run manually: cd backend && npm run dev)
+# Frontend:      http://localhost:3000  (run manually: cd frontend && npm run dev)
+#
+# IMPORTANT: For N8N workflows to call backend on localhost (host machine),
+#            we use host.docker.internal. After importing workflows, update
+#            all HTTP Request node URLs from http://backend:3001/api/... to
+#            http://host.docker.internal:3001/api/... in the N8N UI.
+#
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─── 1. PostgreSQL - N8N Database ───
+  postgres:
+    image: postgres:15
+    container_name: n8n_postgres_local
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8npass
+    volumes:
+      - pgdata_local:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - localnet
+
+  # ─── 2. N8N - Workflow Orchestrator ───
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n_local
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # ─── Database ───
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=n8npass
+      - DB_POSTGRESDB_SCHEMA=public
+      # ─── URLs ───
+      - WEBHOOK_URL=http://localhost:5678
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - FRONTEND_URL=http://localhost:3000
+      # Backend URL: use host.docker.internal so N8N can reach backend on host machine
+      - BACKEND_URL=http://host.docker.internal:3001
+      # ─── N8N Secret ───
+      - N8N_SECRET_KEY=approvehubs3cr3t
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # ─── Security ───
+      - N8N_SECURE_COOKIE=false
+      - N8N_BASIC_AUTH_ACTIVE=false
+      # ─── Timeout ───
+      - EXECUTIONS_TIMEOUT=600
+      - WEBHOOK_TIMEOUT=600
+    # Allow N8N container to reach host machine's localhost
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - n8n_data_local:/home/node/.n8n
+    depends_on:
+      - postgres
+    networks:
+      - localnet
+
+volumes:
+  n8n_data_local:
+  pgdata_local:
+
+networks:
+  localnet:
+    driver: bridge

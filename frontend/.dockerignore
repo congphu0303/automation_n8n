@@ -1,0 +1,15 @@
+# .dockerignore - loại bỏ những file không cần trong Docker image
+.git
+.gitignore
+node_modules
+Dockerfile
+.dockerignore
+*.md
+*.yml
+*.yaml
+*.json
+!package.json
+!package-lock.json
+*.log
+.vscode
+.idea
