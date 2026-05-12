@@ -22,16 +22,13 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_PORT || '22' }}
           script: |
-            # Copy code mới sang /root/
-            cp -r /home/runner/automation_n8n/* /root/
-
-            # Pull latest
             cd /root
+
+            # Đảm bảo pull code mới nhất từ nhánh main
             git pull origin main
 
-            # Build --no-cache để ép nạp code mới
+            # Ép Docker build lại image mới (tránh dùng cache cũ)
             docker compose build --no-cache backend frontend
 
-            # Restart services
+            # Khởi động lại toàn bộ container với image mới
             docker compose up -d backend frontend n8n
-            docker compose restart caddy
