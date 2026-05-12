@@ -64,12 +64,10 @@ export const createBooking = async (data) => {
     meetingDate: data.meeting_date,
     startTime: data.start_time,
     endTime: data.end_time,
-    durationMinutes: 60,
     purpose: data.purpose,
     attendees: data.attendees || 1,
     priority: data.priority || 'normal',
     notes: data.notes || '',
-    equipmentNeeded: [],
     managerEmail: user.email || '',
   };
   return axios.post('https://n8n.internalautomation.io.vn/webhook/nhan-yeu-cau-dat-phong', payload);
