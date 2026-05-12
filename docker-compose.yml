@@ -158,6 +158,27 @@ services:
     networks:
       - approvenet
 
+  # ───────────────────────────────────────────────────────────────
+  # Caddy - Global Reverse Proxy
+  # ───────────────────────────────────────────────────────────────
+  caddy:
+    image: caddy:alpine
+    container_name: approval_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - approvenet
+    depends_on:
+      - frontend
+      - backend
+      - n8n
+
 # ═══════════════════════════════════════════════════════════════════
 # Networks
 # ═══════════════════════════════════════════════════════════════════
@@ -172,4 +193,8 @@ volumes:
   n8n_data:
     driver: local
   postgres_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local

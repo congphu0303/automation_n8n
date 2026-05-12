@@ -30,5 +30,5 @@ jobs:
             # Ép Docker build lại image mới (tránh dùng cache cũ)
             docker compose build --no-cache backend frontend
 
-            # Khởi động lại toàn bộ container với image mới
-            docker compose up -d backend frontend n8n
+            # Khởi động lại toàn bộ container với image mới và dọn dẹp orphan
+            docker compose up -d --remove-orphans backend frontend n8n caddy
