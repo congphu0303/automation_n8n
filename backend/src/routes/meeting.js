@@ -5,6 +5,7 @@ const Booking = require("../models/Booking");
 const User = require("../models/User");
 const { verifyToken } = require("../middleware/auth");
 const { generateApprovalToken } = require("../middleware/n8n");
+const { triggerN8NWorkflow } = require("../helpers/n8n");
 
 const router = express.Router();
 
@@ -136,6 +137,30 @@ router.post("/book", verifyToken, async (req, res) => {
       manager_status: "pending",
       approval_link: null,   // N8N will generate this
     });
+
+    // Trigger N8N workflow để gửi email duyệt
+    const n8nPayload = {
+      bookingId: booking.booking_id,
+      requesterId: user._id.toString(),
+      requesterName: user.name,
+      requesterEmail: user.email,
+      department: user.department,
+      roomId: room._id.toString(),
+      roomName: safeRoomName,
+      roomCapacity: room.capacity,
+      meetingDate: meeting_date,
+      startTime: start_time,
+      endTime: end_time,
+      durationMinutes: duration_minutes,
+      purpose,
+      attendees: attendeesCount,
+      priority: priority || "normal",
+      equipmentNeeded: Array.isArray(equipment_needed) ? equipment_needed : [],
+      notes: notes || "",
+      managerApprovalToken,
+      managerEmail: "",
+    };
+    triggerN8NWorkflow("webhook/nhan-yeu-cau-dat-phong", n8nPayload);
 
     res.status(201).json({
       success: true,
