@@ -11,8 +11,7 @@ const bookingSchema = new mongoose.Schema(
 
     // Người đặt
     requester_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       required: true,
     },
 
