@@ -65,9 +65,13 @@ app.use("/api/leave", leaveRoutes);
 app.use("/api/approval", approvalRoutes);
 
 // Meeting Room (canonical path — frontend uses /api/meeting-room/*)
-// Note: /api/rooms was previously mounted here too, causing duplicate routes.
-// Removed to avoid conflict. Use /api/meeting-room for all meeting endpoints.
 app.use("/api/meeting-room", meetingRoutes);
+
+// Backward compatibility — frontend v1 calls /api/rooms
+app.use("/api/rooms", (req, res, next) => {
+  req.url = `/rooms${req.url === "/" ? "" : req.url}`;
+  meetingRoutes(req, res, next);
+});
 
 // Meeting Room Mongo API (for N8N workflows)
 app.use("/api/meeting-room-mongo", meetingRoomMongoRoutes);

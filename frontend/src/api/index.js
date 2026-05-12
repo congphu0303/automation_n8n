@@ -70,7 +70,7 @@ export const createBooking = async (data) => {
     notes: data.notes || '',
     managerEmail: user.email || '',
   };
-  return axios.post('https://n8n.internalautomation.io.vn/webhook/nhan-yeu-cau-dat-phong', payload);
+  return axios.post('//n8n.internalautomation.io.vn/webhook/nhan-yeu-cau-dat-phong', payload);
 };
 export const cancelBooking = (bookingId, reason) => api.post('/meeting-room/cancel', { booking_id: bookingId, reason });
 export const syncBookingStatus = (data) => api.post('/meeting-room/sync-status', data);
