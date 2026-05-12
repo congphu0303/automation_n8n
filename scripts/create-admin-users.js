@@ -27,7 +27,7 @@ const users = [
 async function createUsers() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ Connected to MongoDB");
+    console.log("Connected to MongoDB");
 
     for (const u of users) {
       const exists = await User.findOne({ email: u.email });
@@ -37,20 +37,20 @@ async function createUsers() {
         exists.department = u.department;
         exists.name = u.name;
         await exists.save();
-        console.log(`♻️  Updated: ${u.email} → role: ${u.role}`);
+        console.log(`Updated: ${u.email} → role: ${u.role}`);
       } else {
         const hashed = await bcrypt.hash(u.password, 10);
         const user = new User({ ...u, password: hashed });
         await user.save();
-        console.log(`✅ Created: ${u.email} → role: ${u.role}`);
+        console.log(`Created: ${u.email} → role: ${u.role}`);
       }
     }
 
-    console.log("\n🎉 Done! Thông tin đăng nhập:");
+    console.log("\nDone! Thông tin đăng nhập:");
     console.log("   HR: phupc.23ite@vku.udn.vn / Manager@123");
     console.log("   Manager: tjpeter020@gmail.com / Manager@123");
   } catch (err) {
-    console.error("❌ Error:", err.message);
+    console.error("Error:", err.message);
   } finally {
     await mongoose.disconnect();
   }

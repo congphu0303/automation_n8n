@@ -1,0 +1,13 @@
+{
+  "watch": ["src"],
+  "ext": "js,json",
+  "env": {
+    "NODE_ENV": "development",
+    "FRONTEND_URL": "http://localhost:3000",
+    "N8N_URL": "http://localhost:5678",
+    "ALLOWED_ORIGIN_1": "http://localhost:3000",
+    "N8N_SECRET_KEY": "approvehubs3cr3t"
+  },
+  "exec": "node -r dotenv/config src/index.js dotenv_config_path=.env.local",
+  "delay": 1000
+}
