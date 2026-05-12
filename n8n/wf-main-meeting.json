@@ -1,0 +1,1347 @@
+{
+  "name": "WF - Meeting Room: Book, Approve, Cancel",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meeting-book",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "mtg-webhook-create",
+      "name": "Webhook: Book Room",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "meeting-book-v2"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meeting-cancel",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "mtg-webhook-cancel",
+      "name": "Webhook: Cancel Booking",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        600
+      ],
+      "webhookId": "meeting-cancel-v2"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "meeting-approval",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "mtg-webhook-approval",
+      "name": "Webhook: Approval Action",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        200
+      ],
+      "webhookId": "meeting-approval-v2"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst headers = item.headers || {};\nconst authHeader = headers.authorization || '';\nreturn [{ json: {\n  token: authHeader.replace('Bearer ', ''),\n  authHeader,\n  room_id: body.room_id || '',\n  room_name: body.room_name || '',\n  meeting_date: body.meeting_date || '',\n  start_time: body.start_time || '',\n  end_time: body.end_time || '',\n  purpose: body.purpose || '',\n  attendees: parseInt(body.attendees || 1),\n  priority: body.priority || 'normal',\n  notes: body.notes || '',\n  requester_name: body.requester_name || '',\n  requester_email: body.requester_email || '',\n  department: body.department || '',\n  backendUrl: ($env.BACKEND_URL || 'http://backend:3001') + '/api/meeting-room',\n  frontendUrl: $env.FRONTEND_URL || 'https://approvehub.internalautomation.io.vn' } }];"
+      },
+      "id": "mtg-parse-book",
+      "name": "Parse Book Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "{{ $env.BACKEND_URL }}/api/rooms/{{ $json.room_id }}/slots?date={{ $json.meeting_date }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "mtg-check-slots",
+      "name": "HTTP: Check Available Slots",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const resp = $input.first().json;\nconst data = resp.body || resp;\nconst input = $('Parse Book Input').first().json;\nconst bookedSlots = data.booked_slots || [];\n\nconst targetSlot = `${input.start_time}-${input.end_time}`;\nconst isAvailable = !bookedSlots.includes(targetSlot);\n\nreturn [{ json: {\n  ...input,\n  isAvailable,\n  bookedSlots,\n  conflictSlot: isAvailable ? '' : targetSlot\n} }];"
+      },
+      "id": "mtg-parse-slots",
+      "name": "Parse Slot Check",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        720,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c-avail",
+              "leftValue": "={{ $json.isAvailable }}",
+              "rightValue": true,
+              "operation": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        960,
+        200
+      ],
+      "id": "mtg-check-available",
+      "name": "Check: Available?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}/book",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "room_id",
+              "value": "={{ $json.room_id }}"
+            },
+            {
+              "name": "room_name",
+              "value": "={{ $json.room_name }}"
+            },
+            {
+              "name": "meeting_date",
+              "value": "={{ $json.meeting_date }}"
+            },
+            {
+              "name": "start_time",
+              "value": "={{ $json.start_time }}"
+            },
+            {
+              "name": "end_time",
+              "value": "={{ $json.end_time }}"
+            },
+            {
+              "name": "purpose",
+              "value": "={{ $json.purpose }}"
+            },
+            {
+              "name": "attendees",
+              "value": "={{ $json.attendees }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "notes",
+              "value": "={{ $json.notes }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mtg-create-booking",
+      "name": "HTTP: Create Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const resp = $input.first().json;\nconst data = resp.body || resp;\nconst input = $('Parse Book Input').first().json;\n\nconst bookingId = data.booking_id || data._id || '';\nconst frontendUrl = input.frontendUrl;\n\nreturn [{ json: {\n  ...input,\n  success: resp.statusCode === 200 || resp.statusCode === 201,\n  bookingId,\n  status: data.status || 'pending',\n  approvalLink: `${frontendUrl}/meeting-approvals.html?booking_id=${encodeURIComponent(bookingId)}`,\n  managerEmail: data.managerEmail || input.managerEmail || 'manager@example.com'\n} }];"
+      },
+      "id": "mtg-parse-booking-resp",
+      "name": "Parse Booking Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst headers = item.headers || {};\nconst authHeader = headers.authorization || '';\nreturn [{ json: {\n  token: authHeader.replace('Bearer ', ''),\n  booking_id: body.booking_id || '',\n  reason: body.reason || 'Huy boi nguoi dung',\n  requester_name: body.requester_name || '',\n  requester_email: body.requester_email || '',\n  room_name: body.room_name || '',\n  meeting_date: body.meeting_date || '',\n  start_time: body.start_time || '',\n  end_time: body.end_time || '',\n  managerEmail: body.managerEmail || '',\n  backendUrl: ($env.BACKEND_URL || 'http://backend:3001') + '/api/meeting-room'\n} }];"
+      },
+      "id": "mtg-parse-cancel",
+      "name": "Parse Cancel Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        240,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}/cancel",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "booking_id",
+              "value": "={{ $json.booking_id }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $json.reason }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mtg-cancel-booking",
+      "name": "HTTP: Cancel Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        480,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const resp = $input.first().json;\nconst data = resp.body || resp;\nconst input = $('Parse Cancel Input').first().json;\nreturn [{ json: {\n  success: resp.statusCode === 200,\n  ...input,\n  status: data.status || 'cancelled'\n} }];"
+      },
+      "id": "mtg-parse-cancel-resp",
+      "name": "Parse Cancel Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        720,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst query = item.query || body;\nreturn [{ json: {\n  booking_id: query.booking_id || '',\n  action: query.action || 'approve',\n  backendUrl: ($env.BACKEND_URL || 'http://backend:3001') + '/api/meeting-room'\n} }];"
+      },
+      "id": "mtg-parse-approval",
+      "name": "Parse Approval Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        360,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.backendUrl }}/approve",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "booking_id",
+              "value": "={{ $json.booking_id }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mtg-process-approval",
+      "name": "HTTP: Process Approval",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const resp = $input.first().json;\nconst data = resp.body || resp;\nconst input = $('Parse Approval Input').first().json;\nreturn [{ json: {\n  success: resp.statusCode === 200,\n  status: data.status || '',\n  action: input.action,\n  requester_name: data.requester_name || data.requesterName || '',\n  requester_email: data.requester_email || data.requesterEmail || '',\n  room_name: data.room_name || '',\n  meeting_date: data.meeting_date || '',\n  start_time: data.start_time || '',\n  end_time: data.end_time || ''\n} }];"
+      },
+      "id": "mtg-parse-approval-resp",
+      "name": "Parse Approval Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        840,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c-approved",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "approved",
+              "operation": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        200
+      ],
+      "id": "mtg-check-approved",
+      "name": "Check: Approved?"
+    },
+    {
+      "parameters": {
+        "functionCode": "const to = `{{ $json.managerEmail }}`;\nconst subject = `[ApproveHub] Yeu cau dat phong hop tu {{ $json.requester_name }}`;\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; }\n  .badge { display: inline-block; padding: 5px 12px; background: #e7f3ff; color: #0056b3; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .details-table { width: 100%; margin: 16px 0; border-collapse: collapse; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }\n  .details-table td { padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .btn-container { text-align: center; margin-top: 20px; display: flex; gap: 12px; justify-content: center; }\n  .btn { display: inline-block; padding: 10px 24px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 0.9rem; }\n  .btn-approve { background: #28a745; color: white; }\n  .btn-reject { background: #dc3545; color: white; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Yeu cau Dat Phong Hop</h2></div>\n    <div class=\"content\">\n      <p>Kin gui <strong>{{ $json.managerEmail }}</strong>,</p>\n      <p style=\"margin-top:8px;\">Co mot yeu cau dat phong hop moi can duoc xem xet:</p>\n      <div style=\"text-align:center; margin:16px 0;\"><span class=\"badge\">Dang cho phe duyet</span></div>\n      <table class=\"details-table\">\n        <tr><td>Nguoi dat</td><td><strong>{{ $json.requester_name }}</strong></td></tr>\n        <tr><td>Email</td><td>{{ $json.requester_email }}</td></tr>\n        <tr><td>Phong</td><td>{{ $json.room_name }}</td></tr>\n        <tr><td>Ngay</td><td>{{ $json.meeting_date }}</td></tr>\n        <tr><td>Thoi gian</td><td>{{ $json.start_time }} - {{ $json.end_time }}</td></tr>\n        <tr><td>Muc dich</td><td>{{ $json.purpose }}</td></tr>\n        <tr><td>So nguoi</td><td>{{ $json.attendees }}</td></tr>\n        <tr><td>Do uu tien</td><td>{{ $json.priority }}</td></tr>\n      </table>\n      <div class=\"btn-container\">\n        <a href=\"{{ $json.approvalLink }}&action=approve\" class=\"btn btn-approve\">Phe duyet</a>\n        <a href=\"{{ $json.approvalLink }}&action=reject\" class=\"btn btn-reject\">Tu choi</a>\n      </div>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\nreturn [{ json: { ...($json || {}), _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "mtg-email-manager-prep",
+      "name": "Prep: Email: To Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "mtg-email-manager-token",
+      "name": "Token: Email: To Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1680,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: To Manager').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "mtg-email-manager-encode",
+      "name": "Encode: Email: To Manager",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mtg-email-manager-send",
+      "name": "Email: To Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const to = `{{ $json.requester_email }}`;\nconst subject = `[ApproveHub] Da nhan yeu cau dat phong hop`;\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #17a2b8, #138496); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; text-align: center; }\n  .badge { display: inline-block; padding: 5px 12px; background: #d1ecf1; color: #0c5460; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .info-box { background: #f0f9fa; border: 1px solid #bee5eb; border-radius: 8px; padding: 14px; margin: 14px 0; text-align: left; font-size: 0.9rem; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Da nhan yeu cau dat phong hop!</h2></div>\n    <div class=\"content\">\n      <p>Xin chao <strong>{{ $json.requester_name }}</strong>,</p>\n      <p style=\"margin-top:8px;\">Yeu cau dat phong hop cua ban da duoc ghi nhan. Manager se xu ly trong thoi gian som nhat.</p>\n      <div style=\"text-align:center; margin:14px 0;\"><span class=\"badge\">Dang cho phe duyet</span></div>\n      <div class=\"info-box\">\n        <strong>Chi tiet:</strong><br>\n        Phong: {{ $json.room_name }}<br>\n        Ngay: {{ $json.meeting_date }}<br>\n        Thoi gian: {{ $json.start_time }} - {{ $json.end_time }}<br>\n        Muc dich: {{ $json.purpose }}\n      </div>\n      <p>Ban se nhan email thong bao khi co ket qua.</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\nreturn [{ json: { ...($json || {}), _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "mtg-email-confirm-prep",
+      "name": "Prep: Email: Confirm Requester",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "mtg-email-confirm-token",
+      "name": "Token: Email: Confirm Requester",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1680,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Confirm Requester').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "mtg-email-confirm-encode",
+      "name": "Encode: Email: Confirm Requester",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mtg-email-confirm-send",
+      "name": "Email: Confirm Requester",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const to = `{{ $json.requester_email }}`;\nconst subject = `[ApproveHub] Khong the dat phong - Slot da ban`;\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; text-align: center; }\n  .badge { display: inline-block; padding: 5px 12px; background: #fdeaea; color: #721c24; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .conflict-box { background: #fff5f5; border: 1px solid #fab1a0; border-radius: 8px; padding: 14px; margin: 14px 0; font-size: 0.9rem; color: #721c24; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Khong the dat phong</h2></div>\n    <div class=\"content\">\n      <p>Xin chao <strong>{{ $json.requester_name }}</strong>,</p>\n      <p style=\"margin-top:8px;\">Rat tiec, phong <strong>{{ $json.room_name }}</strong> da co nguoi dat tai thoi gian ban yeu cau.</p>\n      <div style=\"text-align:center; margin:14px 0;\"><span class=\"badge\">Slot da ban</span></div>\n      <div class=\"conflict-box\">\n        <strong>Slot ban:</strong> {{ $json.start_time }} - {{ $json.end_time }}<br>\n        <strong>Ngay:</strong> {{ $json.meeting_date }}<br>\n        <strong>Phong:</strong> {{ $json.room_name }}\n      </div>\n      <p>Vui long chon thoi gian hoac phong khac.</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\nreturn [{ json: { ...($json || {}), _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "mtg-email-slot-busy-prep",
+      "name": "Prep: Email: Slot Busy",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "mtg-email-slot-busy-token",
+      "name": "Token: Email: Slot Busy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Slot Busy').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "mtg-email-slot-busy-encode",
+      "name": "Encode: Email: Slot Busy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mtg-email-slot-busy-send",
+      "name": "Email: Slot Busy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const to = `{{ $json.requester_email }}`;\nconst subject = `[ApproveHub] Xac nhan huy dat phong hop thanh cong`;\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #6c757d, #545b62); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; text-align: center; }\n  .badge { display: inline-block; padding: 5px 12px; background: #e9ecef; color: #495057; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .cancel-box { background: #fffaf0; border-left: 4px solid #fdcb6e; padding: 12px 16px; margin: 14px 0; border-radius: 0 8px 8px 0; font-size: 0.88rem; text-align: left; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Xac nhan Huy dat Phong</h2></div>\n    <div class=\"content\">\n      <p>Xin chao <strong>{{ $json.requester_name }}</strong>,</p>\n      <p style=\"margin-top:8px;\">Yeu cau huy dat phong hop cua ban da duoc xu ly thanh cong.</p>\n      <div style=\"text-align:center; margin:14px 0;\"><span class=\"badge\">Da huy</span></div>\n      <div class=\"cancel-box\"><strong>Phong:</strong> {{ $json.room_name }}<br><strong>Ngay:</strong> {{ $json.meeting_date }}<br><strong>Thoi gian:</strong> {{ $json.start_time }} - {{ $json.end_time }}</div>\n      <p>Neu can dat phong khac, vui long tao yeu cau moi tren he thong.</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\nreturn [{ json: { ...($json || {}), _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "mtg-email-cancel-emp-prep",
+      "name": "Prep: Email: Cancel to Requester",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "mtg-email-cancel-emp-token",
+      "name": "Token: Email: Cancel to Requester",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        960,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Cancel to Requester').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "mtg-email-cancel-emp-encode",
+      "name": "Encode: Email: Cancel to Requester",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mtg-email-cancel-emp-send",
+      "name": "Email: Cancel to Requester",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        960,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const to = `{{ $json.requester_email }}`;\nconst subject = `[ApproveHub] Phong hop da duoc dat thanh cong!`;\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; text-align: center; }\n  .badge { display: inline-block; padding: 5px 12px; background: #d4edda; color: #155724; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .success-box { background: #f4fbf6; border: 2px dashed #28a745; padding: 16px; margin: 14px 0; border-radius: 8px; text-align: center; color: #155724; font-weight: 600; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Dat phong hop thanh cong!</h2></div>\n    <div class=\"content\">\n      <p>Xin chao <strong>{{ $json.requester_name }}</strong>,</p>\n      <p style=\"margin-top:8px;\">Yeu cau dat phong hop cua ban da duoc <strong>phe duyet</strong>.</p>\n      <div style=\"text-align:center; margin:14px 0;\"><span class=\"badge\">Da duyet</span></div>\n      <div class=\"success-box\">\n        Phong: <strong>{{ $json.room_name }}</strong><br>\n        Ngay: {{ $json.meeting_date }}<br>\n        Thoi gian: {{ $json.start_time }} - {{ $json.end_time }}\n      </div>\n      <p>Chuc ban co cuoc hop vui ve!</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\nreturn [{ json: { ...($json || {}), _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "mtg-email-approved-prep",
+      "name": "Prep: Email: Approved",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "mtg-email-approved-token",
+      "name": "Token: Email: Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Approved').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "mtg-email-approved-encode",
+      "name": "Encode: Email: Approved",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mtg-email-approved-send",
+      "name": "Email: Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const to = `{{ $json.requester_email }}`;\nconst subject = `[ApproveHub] Yeu cau dat phong hop bi tu choi`;\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; text-align: center; }\n  .badge { display: inline-block; padding: 5px 12px; background: #fdeaea; color: #721c24; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Yeu cau dat phong bi tu choi</h2></div>\n    <div class=\"content\">\n      <p>Xin chao <strong>{{ $json.requester_name }}</strong>,</p>\n      <p style=\"margin-top:8px;\">Yeu cau dat phong hop cua ban da bi <strong style=\"color:#dc3545;\">tu choi</strong>.</p>\n      <div style=\"text-align:center; margin:14px 0;\"><span class=\"badge\">Bi tu choi</span></div>\n      <p>Phong: <strong>{{ $json.room_name }}</strong><br>Ngay: {{ $json.meeting_date }}<br>Thoi gian: {{ $json.start_time }} - {{ $json.end_time }}</p>\n      <p style=\"margin-top:16px; font-size:0.88rem; color:#666;\">Vui long lien he Manager hoac chon phong/thoi gian khac.</p>\n    </div>\n    <div class=\"footer\"><strong>ApproveHub</strong> - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\nreturn [{ json: { ...($json || {}), _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "mtg-email-rejected-prep",
+      "name": "Prep: Email: Rejected",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json._to }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "mtg-email-rejected-token",
+      "name": "Token: Email: Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: Rejected').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "mtg-email-rejected-encode",
+      "name": "Encode: Email: Rejected",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mtg-email-rejected-send",
+      "name": "Email: Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        620
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Book Room": {
+      "main": [
+        [
+          {
+            "node": "Parse Book Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Book Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Check Available Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Check Available Slots": {
+      "main": [
+        [
+          {
+            "node": "Parse Slot Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Slot Check": {
+      "main": [
+        [
+          {
+            "node": "Check: Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Available?": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Create Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep: Email: Slot Busy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Create Booking": {
+      "main": [
+        [
+          {
+            "node": "Parse Booking Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Booking Response": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep: Email: Confirm Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: Slot Busy": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Confirm Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Cancel Booking": {
+      "main": [
+        [
+          {
+            "node": "Parse Cancel Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cancel Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Cancel Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Cancel Booking": {
+      "main": [
+        [
+          {
+            "node": "Parse Cancel Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cancel Response": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Cancel to Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Approval Action": {
+      "main": [
+        [
+          {
+            "node": "Parse Approval Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Approval Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Process Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Process Approval": {
+      "main": [
+        [
+          {
+            "node": "Parse Approval Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Approval Response": {
+      "main": [
+        [
+          {
+            "node": "Check: Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Approved?": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Confirm Requester": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Confirm Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Confirm Requester": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Confirm Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Confirm Requester": {
+      "main": [
+        [
+          {
+            "node": "Email: Confirm Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Slot Busy": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Slot Busy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Slot Busy": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Slot Busy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Slot Busy": {
+      "main": [
+        [
+          {
+            "node": "Email: Slot Busy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Cancel to Requester": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Cancel to Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Cancel to Requester": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Cancel to Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Cancel to Requester": {
+      "main": [
+        [
+          {
+            "node": "Email: Cancel to Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Approved": {
+      "main": [
+        [
+          {
+            "node": "Email: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Email: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "wf-meeting-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "wf-meeting-room",
+  "tags": [
+    "meeting",
+    "wf",
+    "room"
+  ]
+}

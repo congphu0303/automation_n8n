@@ -1,0 +1,475 @@
+{
+  "name": "wf1-leave-request",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leave-create",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "bca080ce-d77e-4f49-a4d7-558b98f21a05",
+      "name": "Webhook: Leave Create",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11472,
+        16240
+      ],
+      "webhookId": "wf1-leave-create"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst headers = item.headers || {};\nconst authHeader = headers.authorization || headers.Authorization || '';\n\nconst rawDate = body.leave_date || body.leaveDate || '';\nconst fmt = (d) => {\n  if (!d) return '';\n  const pd = new Date(d);\n  if (isNaN(pd)) return d;\n  return pd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });\n};\n\nreturn [{ json: {\n  token: authHeader.replace('Bearer ', ''),\n  authHeader,\n  leaveId: body.leaveId || body.leave_id || body.id || '',\n  leave_date: rawDate,\n  end_date: body.end_date || body.endDate || '',\n  leaveDateDisplay: fmt(rawDate),\n  endDateDisplay: fmt(body.end_date || body.endDate || ''),\n  leave_days: parseInt(body.leave_days || body.leaveDays || 1),\n  reason: body.reason || '',\n  employee_name: body.employee_name || body.employeeName || body.name || '',\n  employee_email: body.employee_email || body.employeeEmail || body.email || '',\n  department: body.department || '',\n  managerEmail: body.managerEmail || '',\n  hrEmail: body.hrEmail || '',\n  managerApprovalToken: body.managerApprovalToken || '',\n  hrApprovalToken: body.hrApprovalToken || '',\n  backendUrl:'http://backend:3001'\n} }];"
+      },
+      "id": "5c758ed9-8660-494b-94ba-bcfc959eec76",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        11744,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/settings/lookup?department={{ $json.department }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "{{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fd41b2f5-131f-4d5f-8ff7-64ce8b13efd4",
+      "name": "HTTP: Lookup Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        11952,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://backend:3001/api/settings/lookup?type=hr",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "2f1e245e-abf5-486d-84da-80eef642a256",
+      "name": "HTTP: Lookup HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        12176,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const managerResp = $('HTTP: Lookup Manager').first().json;\nconst hrResp = $('HTTP: Lookup HR').first().json;\nconst input = $('Parse Input').first().json;\n\nconst managerEmail = managerResp.email || input.managerEmail || '';\nconst hrEmail = hrResp.email || input.hrEmail || '';\nconst leaveDays = input.leave_days;\nconst needsHr = leaveDays > 3;\n\nreturn [{ json: {\n  ...input,\n  managerEmail,\n  hrEmail,\n  needsHr,\n  flowType: needsHr ? 'manager_then_hr' : 'manager_only'\n} }];"
+      },
+      "id": "e21f22b8-fdc6-4b6d-81a0-f04f727e6a66",
+      "name": "Merge Emails",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        12384,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const input = $input.first().json;\n\n// Đã xoá $env, gán cứng link trực tiếp:\nconst frontendUrl = 'https://approvehub.internalautomation.io.vn'; \n\nconst managerToken = input.managerApprovalToken || '';\nconst hrToken = input.hrApprovalToken || '';\n\nreturn [{ \n  json: {\n    ...input,\n    managerApprovalLink: managerToken ? `${frontendUrl}/approval-page.html?token=${encodeURIComponent(managerToken)}` : '',\n    hrApprovalLink: hrToken ? `${frontendUrl}/approval-page.html?token=${encodeURIComponent(hrToken)}&hr=true` : ''\n  } \n}];"
+      },
+      "id": "484e788c-881c-49dc-8d04-1a4e46b8f4af",
+      "name": "Build Approval Links",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        12624,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"status\": \"notified\",\n  \"leaveId\": \"{{ $json.leaveId }}\",\n  \"message\": \"Email thong bao da duoc gui cho manager.\"\n}",
+        "options": {}
+      },
+      "id": "e15caf71-5f22-446a-99fd-e97eca326ec7",
+      "name": "Respond: OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        14336,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Lấy dữ liệu từ node đầu vào\nconst item = $input.first().json;\n\n// 1. Sửa cách gán biến (Dùng cú pháp JS thay vì {{ }})\nconst to = item.managerEmail;\nconst subject = `Yêu cầu nghỉ phép từ ${item.employee_name}`;\n\n// 2. Sửa toàn bộ các biến bên trong htmlBody (Thay {{ $json.x }} bằng ${item.x})\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 24px; text-align: center; }\n  .header h2 { font-size: 1.3rem; margin-bottom: 4px; }\n  .header p { opacity: 0.85; font-size: 0.9rem; }\n  .content { padding: 28px; }\n  .badge { display: inline-block; padding: 5px 12px; background: #e7f3ff; color: #0056b3; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }\n  .details-table { width: 100%; margin: 20px 0; border-collapse: collapse; border-radius: 8px; overflow: hidden; border: 1px solid #eee; }\n  .details-table td { padding: 12px 16px; border-bottom: 1px solid #f5f5f5; font-size: 0.92rem; }\n  .details-table td:first-child { font-weight: 600; color: #555; width: 38%; background: #fafafa; }\n  .reason-box { background: #f8f9fa; border-left: 4px solid #007bff; padding: 14px 18px; margin-top: 18px; border-radius: 0 8px 8px 0; font-size: 0.92rem; line-height: 1.6; color: #333; }\n  .reason-box strong { color: #0056b3; display: block; margin-bottom: 4px; }\n\n  .btn-container { \n    text-align: center; \n    margin-top: 30px; \n    width: 100%; \n  }\n  \n  .btn { \n    display: inline-block; \n    min-width: 280px; \n    padding: 15px 30px; \n    text-align: center; \n    text-decoration: none; \n    border-radius: 8px; \n    font-weight: 700; \n    font-size: 1.1rem; \n    background: #007bff;\n    color: white;\n    transition: opacity 0.2s; \n  }\n  \n  .btn:hover { opacity: 0.85; }\n  \n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; border-top: 1px solid #eee; }\n  .footer strong { color: #666; }\n  \n  @media (max-width: 600px) { \n    .container { margin: 0; border-radius: 0; } \n    .btn { min-width: 85%; } \n  }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h2>Yêu cầu Nghỉ phép Mới</h2>\n      <p>ApproveHub - Tự động hóa quy trình nhân sự</p>\n    </div>\n    <div class=\"content\">\n      <p>Kính gửi <strong>${item.managerEmail}</strong>,</p>\n      <p style=\"margin-top: 8px;\">Có một yêu cầu nghỉ phép mới cần được xem xét và phê duyệt:</p>\n      <div style=\"text-align:center; margin: 18px 0;\"><span class=\"badge\">Đang chờ phê duyệt</span></div>\n      \n      <table class=\"details-table\">\n        <tr><td>Nhân viên</td><td><strong>${item.employee_name}</strong></td></tr>\n        <tr><td>Phòng ban</td><td>${item.department}</td></tr>\n        <tr><td>Email</td><td>${item.employee_email}</td></tr>\n        <tr><td>Ngày bắt đầu</td><td>${item.leaveDateDisplay}</td></tr>\n        <tr><td>Ngày kết thúc</td><td>${item.endDateDisplay}</td></tr>\n        <tr><td>Số ngày nghỉ</td><td><strong style=\"color:#007bff;\">${item.leave_days} ngày</strong></td></tr>\n        <tr><td>Luồng phê duyệt</td><td>${item.flowType === 'manager_then_hr' ? 'Manager -> HR' : 'Manager'}</td></tr>\n      </table>\n      \n      <div class=\"reason-box\"><strong>Lý do nghỉ phép:</strong><br>${item.reason}</div>\n      \n      <div class=\"btn-container\">\n        <a href=\"${item.managerApprovalLink}\" class=\"btn\" style=\"color: white;\">Phê duyệt</a>\n      </div>\n      \n    </div>\n    <div class=\"footer\">\n      <strong>ApproveHub</strong> - Low-code Automation System<br>\n      Đây là thông báo tự động. Vui lòng không phản hồi trực tiếp email này.\n    </div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = item.backendUrl || 'http://backend:3001';\n\n// Trả về kết quả\nreturn [{ json: { ...item, _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "5c505370-3134-4ace-a824-18e34e4244df",
+      "name": "Prep: Email: To Manager",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        12816,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $json.employee_email }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "b96a1aeb-3542-4260-bdc0-2ed9c515b834",
+      "name": "Token: Email: To Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        12992,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: To Manager').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "1ca5c807-db71-4ae3-a725-996c7e5481de",
+      "name": "Encode: Email: To Manager",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13184,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "857c6b35-aedb-4672-bd70-35d3b78ff44b",
+      "name": "Email: To Manager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        13392,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// 1. Lấy dữ liệu từ node 'Parse Input'\nconst input = $('Parse Input').first().json;\n\n// 2. Gán giá trị bằng cú pháp Template Literal của JS (${...})\nconst to = input.employee_email;\nconst subject = `Đã nhận yêu cầu nghỉ phép - ${input.employee_name}`;\n\n// 3. Sửa toàn bộ các biến trong htmlBody sang cú pháp JS\nconst htmlBody = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\">\n<style>\n  * { margin: 0; padding: 0; box-sizing: border-box; }\n  .container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }\n  .header { background: linear-gradient(135deg, #17a2b8, #138496); color: white; padding: 24px; text-align: center; }\n  .content { padding: 28px; text-align: left; }\n  .badge { display: inline-block; padding: 5px 12px; background: #d1ecf1; color: #0c5460; border-radius: 20px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; }\n  .info-box { background: #f0f9fa; border: 1px solid #bee5eb; border-radius: 8px; padding: 18px; margin: 16px 0; text-align: left; font-size: 0.92rem; line-height: 1.8; }\n  .footer { background: #f8f9fa; padding: 18px 24px; text-align: center; font-size: 0.78rem; color: #999; }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\"><h2>Đã nhận yêu cầu nghỉ phép!</h2></div>\n    <div class=\"content\">\n      <p>Xin chào <strong>${input.employee_name}</strong>,</p>\n      <p style=\"margin-top:8px;\">Yêu cầu nghỉ phép của bạn đã được ghi nhận thành công.</p>\n      \n      <div style=\"text-align:center; margin:18px 0;\"><span class=\"badge\">Đang xử lý</span></div>\n      \n      <div class=\"info-box\">\n        <strong style=\"color: #138496; font-size: 1rem;\">Chi tiết đơn nghỉ phép:</strong><br>\n        • <strong>Ngày nghỉ:</strong> ${input.leaveDateDisplay}<br>\n        • <strong>Ngày kết thúc:</strong> ${input.endDateDisplay}<br>\n        • <strong>Số ngày:</strong> ${input.leave_days} ngày<br>\n        • <strong>Lý do:</strong> ${input.reason}<br>\n        • <strong>Mã đơn:</strong> <strong>#${input.leaveId}</strong>\n      </div>\n      \n      <p>Manager của bạn sẽ nhận được thông báo và xử lý trong thời gian sớm nhất.</p>\n    </div>\n    <div class=\"footer\">ApproveHub - Low-code Automation System</div>\n  </div>\n</body>\n</html>`;\n\nconst backendUrl = $json.backendUrl || 'http://backend:3001';\n\n// Trả về kết quả cuối cùng\nreturn [{ json: { ...($json || {}), _to: to, _subject: subject, _htmlBody: htmlBody, backendUrl } }];"
+      },
+      "id": "201945d5-a20e-4234-abfb-0638b4fda4c6",
+      "name": "Prep: Email: To Employee",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        13600,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.backendUrl }}/api/internal/gmail/access-token?email={{ $node[\"Prep: Email: To Manager\"].json.employee_email }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $env.N8N_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "51df0dab-0b57-43ce-90ff-f824602a6254",
+      "name": "Token: Email: To Employee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        13776,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get prepared data from previous nodes\nconst prepNode = $('Prep: Email: To Employee').first().json;\nconst tokenNode = $input.first().json;\n\nconst to = prepNode._to || '';\nconst subject = prepNode._subject || '';  \nconst htmlBody = prepNode._htmlBody || '';\nconst accessToken = tokenNode.accessToken || '';\n\n// Build MIME message\nconst mimeLines = [\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=UTF-8',\n  'To: ' + to,\n  'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',\n  '',\n  htmlBody\n];\n\nconst raw = mimeLines.join('\\r\\n');\n\n// Base64url encode\nconst encoded = Buffer.from(raw)\n  .toString('base64')\n  .replace(/\\+/g, '-')\n  .replace(/\\//g, '_')\n  .replace(/=+$/g, '');\n\nreturn { json: { raw: encoded, accessToken, to, subject } };"
+      },
+      "id": "85ef93a6-f2ec-4933-8a64-1c0a70ab4d35",
+      "name": "Encode: Email: To Employee",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13984,
+        16240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "raw",
+              "value": "={{ $json.raw }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a357806b-aa77-406c-ad84-57037632ee17",
+      "name": "Email: To Employee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        14160,
+        16240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Leave Create": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Lookup Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Lookup Manager": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Lookup HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Lookup HR": {
+      "main": [
+        [
+          {
+            "node": "Merge Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Emails": {
+      "main": [
+        [
+          {
+            "node": "Build Approval Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approval Links": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Prep: Email: To Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email: To Employee": {
+      "main": [
+        [
+          {
+            "node": "Respond: OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: To Manager": {
+      "main": [
+        [
+          {
+            "node": "Email: To Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep: Email: To Employee": {
+      "main": [
+        [
+          {
+            "node": "Token: Email: To Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token: Email: To Employee": {
+      "main": [
+        [
+          {
+            "node": "Encode: Email: To Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode: Email: To Employee": {
+      "main": [
+        [
+          {
+            "node": "Email: To Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3bddd8bb-9fe4-4095-ae47-369125bb8138",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0554ac5f13fea7b1063176ecf7df64ebcae2d0b2c896fdc0f2cac8a36246028e"
+  },
+  "id": "oNYjzhYm9UMqV3CL",
+  "tags": []
+}
